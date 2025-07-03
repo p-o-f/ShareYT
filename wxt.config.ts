@@ -14,7 +14,7 @@ export default defineConfig({
       },
       browser_specific_settings: {
         gecko: {
-          //id: "shareyt-extension@shareyt.com", // pinned extension ID for Firefox <--- prob useless now
+          id: "shareyt-extension@shareyt.com", // pinned extension ID for Firefox, might be required for publishing/signing
           strict_min_version: "115.0", // minimum Firefox version
         },
       },
