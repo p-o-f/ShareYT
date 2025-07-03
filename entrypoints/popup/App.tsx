@@ -1,6 +1,10 @@
 import './App.css';
-import { browserPopupRedirectResolver, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { browserPopupRedirectResolver, GoogleAuthProvider, signInWithPopup, signInWithCredential } from 'firebase/auth';
 import { auth } from '@/utils/firebase';
+
+export const isFirefoxExtension = () => {
+  return location.protocol === "moz-extension:";
+};
 
 function App() {
   // https://firebase.google.com/docs/auth/web/chrome-extension
