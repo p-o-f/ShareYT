@@ -5,13 +5,20 @@ export default defineConfig({
   modules: ["@wxt-dev/module-react"],
   manifest: ({ manifestVersion }) => {
     return {
+      permissions: ["identity", "offscreen", "storage"],
       content_security_policy: {
         extension_pages:
           manifestVersion == 2
             ? "script-src 'self' https://apis.google.com/; object-src 'self'"
             : "script-src 'self'; object-src 'self'",
       },
-      permissions: ["identity", "offscreen", "storage"],
+      browser_specific_settings: {
+        gecko: {
+          //id: "shareyt-extension@shareyt.com", // pinned extension ID for Firefox <--- prob useless now
+          strict_min_version: "115.0", // minimum Firefox version
+        },
+      },
     };
   },
 });
+
