@@ -1,9 +1,37 @@
 /// <reference lib="webworker" />
+declare const clients: Clients;
+import { onAuthStateChanged, User, signOut } from "firebase/auth";
 import { PublicPath } from "wxt/browser";
+import { auth } from "../utils/firebase";
 
 export default defineBackground(() => {
-  console.log("Hello background!", { id: browser.runtime.id });
-  browser.runtime.onMessage.addListener(authListener);
+  const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    console.log("Auth state changed in background:", user?.displayName);
+    await storage.setItem("local:user", user);
+    messaging.sendMessage("auth:stateChanged", user);
+  });
+
+  messaging.onMessage("auth:getUser", async () => {
+    const user = await storage.getItem<User>("local:user");
+    console.log("in messaging, user:", user);
+    return user;
+  });
+
+  messaging.onMessage("auth:signIn", async () => {
+    const user = await firebaseAuth();
+    // TODO: `onAuthStateChanged` should be triggering, but its not.. so have to do below
+    // few lines manually, look into this
+    await storage.setItem("local:user", user);
+    messaging.sendMessage("auth:stateChanged", user);
+    // end manual work that should be handled by `onAuthStateChanged`
+    return user;
+  });
+
+  messaging.onMessage("auth:signOut", async () => {
+    await signOut(auth);
+    // onAuthStateChanged *should* fire and handle broadcasting the null user
+    // but i think same issue as above
+  });
 });
 
 const OFFSCREEN_DOCUMENT_PATH = "/offscreen.html";
@@ -46,27 +74,21 @@ async function closeOffscreenDocument() {
 }
 
 async function getAuth() {
-  const auth = await browser.runtime.sendMessage({
-    type: "firebase-auth",
-    target: "offscreen",
-  });
-
+  const auth = await messaging.sendMessage("auth:chromeOffscreen");
   if (auth?.name === "FirebaseError") {
-    throw auth;
+    // throw auth;
+    return null;
   }
-
-  return auth;
+  return auth as User;
 }
 
 async function firebaseAuth() {
   try {
     await setupOffscreenDocument(OFFSCREEN_DOCUMENT_PATH);
-
     const auth = await getAuth();
-    console.log("User Authenticated", auth);
+    console.log("User Authenticated:", auth);
     return auth;
   } catch (err: any /* eslint-disable-line @typescript-eslint/no-explicit-any */) {
-    console.error("Bruh", err);
     if (err.code === "auth/operation-not-allowed") {
       console.error(
         "You must enable an OAuth provider in the Firebase console to use signInWithPopup. This sample uses Google by default.",
@@ -74,22 +96,8 @@ async function firebaseAuth() {
     } else {
       console.error("Authentication error:", err);
     }
-
     return null;
   } finally {
     closeOffscreenDocument();
   }
-}
-
-async function authListener(
-  message: any, // eslint-disable-line @typescript-eslint/no-explicit-any
-  _sender: Browser.runtime.MessageSender,
-  sendResponse: (response?: any) => void, // eslint-disable-line @typescript-eslint/no-explicit-any
-) {
-  if (message.action == "signIn") {
-    firebaseAuth().then((auth) => {
-      sendResponse(auth);
-    });
-  }
-  return true;
 }
