@@ -1,12 +1,13 @@
 /// <reference lib="webworker" />
+declare const clients: Clients;
 import { onAuthStateChanged, User, signOut } from "firebase/auth";
 import { PublicPath } from "wxt/browser";
 import { auth } from "../utils/firebase";
 
 export default defineBackground(() => {
-  onAuthStateChanged(auth, (user) => {
+  const unsubscribe = onAuthStateChanged(auth, async (user) => {
     console.log("Auth state changed in background:", user?.displayName);
-    storage.setItem("local:user", user);
+    await storage.setItem("local:user", user);
     messaging.sendMessage("auth:stateChanged", user);
   });
 
@@ -17,12 +18,19 @@ export default defineBackground(() => {
   });
 
   messaging.onMessage("auth:signIn", async () => {
-    return await firebaseAuth();
+    const user = await firebaseAuth();
+    // TODO: `onAuthStateChanged` should be triggering, but its not.. so have to do below
+    // few lines manually, look into this
+    await storage.setItem("local:user", user);
+    messaging.sendMessage("auth:stateChanged", user);
+    // end manual work that should be handled by `onAuthStateChanged`
+    return user;
   });
 
   messaging.onMessage("auth:signOut", async () => {
     await signOut(auth);
-    // onAuthStateChanged will fire and handle broadcasting the null user
+    // onAuthStateChanged *should* fire and handle broadcasting the null user
+    // but i think same issue as above
   });
 });
 
@@ -78,7 +86,7 @@ async function firebaseAuth() {
   try {
     await setupOffscreenDocument(OFFSCREEN_DOCUMENT_PATH);
     const auth = await getAuth();
-    console.log("User Authenticated", auth);
+    console.log("User Authenticated:", auth);
     return auth;
   } catch (err: any /* eslint-disable-line @typescript-eslint/no-explicit-any */) {
     if (err.code === "auth/operation-not-allowed") {
