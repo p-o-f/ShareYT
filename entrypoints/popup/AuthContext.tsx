@@ -6,6 +6,7 @@ import {
   signOut,
   User,
 } from "firebase/auth";
+import { auth } from "../../utils/firebase";
 
 interface AuthContextType {
   user: User | null;
@@ -15,6 +16,7 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
@@ -30,56 +32,54 @@ export const isFirefoxExtension = () => {
   return location.protocol === "moz-extension:";
 };
 
-const loginWithGoogle = async () => {
-  // if (background) {
-  //   return { status: "error" };
-  // }
-
-  if (isFirefoxExtension()) {
-    try {
-      const nonce = Math.floor(Math.random() * 1000000);
-      const redirectUri = browser.identity.getRedirectURL();
-
-      console.log("Redirect URI:", redirectUri);
-
-      const responseUrl = await browser.identity.launchWebAuthFlow({
-        url: `https://accounts.google.com/o/oauth2/v2/auth?response_type=id_token&nonce=${nonce}&scope=openid%20profile&client_id=${oauthClientId}&redirect_uri=${redirectUri}`,
-        interactive: true,
-      });
-
-      if (!responseUrl) {
-        throw new Error("OAuth2 redirect failed : no response URL received.");
-      }
-
-      // Parse the response url for the id token
-      const idToken = responseUrl.split("id_token=")[1].split("&")[0];
-      const credential = GoogleAuthProvider.credential(idToken);
-      await signInWithCredential(auth, credential);
-    } catch (err) {
-      console.log(err);
-    }
-  } else {
-    browser.runtime.sendMessage({ action: "signIn" }, (res) => {
-      console.log("handle", res);
-    });
-  }
-};
-
-const logout = async () => {
-  await signOut(auth);
-};
-
 export default function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
+      console.log("!!!! FirebaseAuthChanged", u?.displayName ?? "none");
       setCurrentUser(u);
       setLoading(false);
     });
-    return unsubscribe;
+    return () => unsubscribe();
   }, []);
+
+  const loginWithGoogle = async () => {
+    if (isFirefoxExtension()) {
+      try {
+        const nonce = Math.floor(Math.random() * 1000000);
+        const redirectUri = browser.identity.getRedirectURL();
+
+        console.log("Redirect URI:", redirectUri);
+
+        const responseUrl = await browser.identity.launchWebAuthFlow({
+          url: `https://accounts.google.com/o/oauth2/v2/auth?response_type=id_token&nonce=${nonce}&scope=openid%20profile&client_id=${oauthClientId}&redirect_uri=${redirectUri}`,
+          interactive: true,
+        });
+
+        if (!responseUrl) {
+          throw new Error("OAuth2 redirect failed : no response URL received.");
+        }
+
+        const idToken = responseUrl.split("id_token=")[1].split("&")[0];
+        const credential = GoogleAuthProvider.credential(idToken);
+        const result = await signInWithCredential(auth, credential);
+        setCurrentUser(result.user);
+      } catch (err) {
+        console.log(err);
+      }
+    } else {
+      browser.runtime.sendMessage({ action: "signIn" }, (res) => {
+        console.log("handle", res);
+      });
+    }
+  };
+
+  const logout = async () => {
+    await signOut(auth);
+    setCurrentUser(null);
+  };
 
   const value: AuthContextType = {
     user,
