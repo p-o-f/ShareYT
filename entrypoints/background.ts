@@ -4,8 +4,14 @@ import { onAuthStateChanged, User, signOut } from "firebase/auth";
 import { PublicPath } from "wxt/browser";
 import { auth } from "../utils/firebase";
 
+// Define a type for the serialized user
+type SerializedUser = Pick<
+  User,
+  "uid" | "email" | "displayName" | "photoURL" | "emailVerified" | "isAnonymous" | "providerData"
+>;
+
 // Serialize the Firebase user into a structured cloneable object (mv2 needs this ig)
-function safeUser(user: User) { 
+function serializeUser(user: User): SerializedUser {
   return {
     uid: user.uid,
     email: user.email,
@@ -28,21 +34,21 @@ export default defineBackground(() => {
       console.error("Failed to JSON.stringify user:", err);
     }
 
-    const serialized = user ? safeUser(user) : null;
+    const serialized: SerializedUser | null = user ? serializeUser(user) : null;
 
     await storage.setItem("local:user", serialized);
     messaging.sendMessage("auth:stateChanged", serialized);
   });
 
   messaging.onMessage("auth:getUser", async () => {
-    const user = await storage.getItem<ReturnType<typeof safeUser>>("local:user");
+    const user = await storage.getItem<SerializedUser>("local:user");
     console.log("in messaging, user:", user);
     return user;
   });
 
   messaging.onMessage("auth:signIn", async () => {
     const user = await firebaseAuth();
-    const serialized = user ? safeUser(user) : null;
+    const serialized: SerializedUser | null = user ? serializeUser(user) : null;
 
     await storage.setItem("local:user", serialized);
     messaging.sendMessage("auth:stateChanged", serialized);
