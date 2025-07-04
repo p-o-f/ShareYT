@@ -75,7 +75,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
         const idToken = responseUrl.split("id_token=")[1].split("&")[0];
         const credential = GoogleAuthProvider.credential(idToken);
         const result = await signInWithCredential(auth, credential);
-        // i think Tte onAuthStateChanged listener in the background script will handle the update
+        // i think The onAuthStateChanged listener in the background script will handle the update
         // setCurrentUser(result.user);
       } catch (err) {
         console.log(err);
