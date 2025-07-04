@@ -9,6 +9,8 @@ interface MessagingProtocol {
   "auth:getUser": () => User | null;
   // Background->UI messages
   "auth:stateChanged": (user: User | null) => void;
+  // Background->Offscreen messages
+  "auth:chromeOffscreen": () => Promise<any>;
 }
 
 export const messaging = defineExtensionMessaging<MessagingProtocol>();

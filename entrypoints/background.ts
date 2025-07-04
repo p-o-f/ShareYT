@@ -1,20 +1,28 @@
 /// <reference lib="webworker" />
-// import { ExtUserInfo } from "@/utils/messaging";
-import { onAuthStateChanged, User } from "firebase/auth";
+import { onAuthStateChanged, User, signOut } from "firebase/auth";
 import { PublicPath } from "wxt/browser";
+import { auth } from "../utils/firebase";
 
 export default defineBackground(() => {
-  // browser.runtime.onMessage.addListener(authListener);
   onAuthStateChanged(auth, (user) => {
+    console.log("Auth state changed in background:", user?.displayName);
     storage.setItem("local:user", user);
+    messaging.sendMessage("auth:stateChanged", user);
   });
+
   messaging.onMessage("auth:getUser", async () => {
     const user = await storage.getItem<User>("local:user");
     console.log("in messaging, user:", user);
     return user;
   });
+
   messaging.onMessage("auth:signIn", async () => {
     return await firebaseAuth();
+  });
+
+  messaging.onMessage("auth:signOut", async () => {
+    await signOut(auth);
+    // onAuthStateChanged will fire and handle broadcasting the null user
   });
 });
 
@@ -58,10 +66,7 @@ async function closeOffscreenDocument() {
 }
 
 async function getAuth() {
-  const auth = await browser.runtime.sendMessage({
-    type: "firebase-auth",
-    target: "offscreen",
-  });
+  const auth = await messaging.sendMessage("auth:chromeOffscreen");
   if (auth?.name === "FirebaseError") {
     // throw auth;
     return null;
@@ -72,12 +77,10 @@ async function getAuth() {
 async function firebaseAuth() {
   try {
     await setupOffscreenDocument(OFFSCREEN_DOCUMENT_PATH);
-
     const auth = await getAuth();
     console.log("User Authenticated", auth);
     return auth;
   } catch (err: any /* eslint-disable-line @typescript-eslint/no-explicit-any */) {
-    console.error("Bruh", err);
     if (err.code === "auth/operation-not-allowed") {
       console.error(
         "You must enable an OAuth provider in the Firebase console to use signInWithPopup. This sample uses Google by default.",
@@ -85,18 +88,8 @@ async function firebaseAuth() {
     } else {
       console.error("Authentication error:", err);
     }
-
     return null;
   } finally {
     closeOffscreenDocument();
   }
-}
-
-function authListener() {
-  // message: any, // eslint-disable-line @typescript-eslint/no-explicit-any
-  // _sender: Browser.runtime.MessageSender,
-  // sendResponse: (response?: any) => void, // eslint-disable-line @typescript-eslint/no-explicit-any
-  // firebaseAuth().then((auth) => {
-  //   sendResponse(auth);
-  // });
 }

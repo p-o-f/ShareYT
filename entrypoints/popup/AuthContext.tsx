@@ -1,11 +1,13 @@
-import { createContext, ReactNode } from "react";
 import {
-  GoogleAuthProvider,
-  signInWithCredential,
-  signOut,
-  User,
-} from "firebase/auth";
+  createContext,
+  ReactNode,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
+import { GoogleAuthProvider, signInWithCredential, User } from "firebase/auth";
 import { auth } from "../../utils/firebase";
+import { messaging } from "../../utils/messaging";
 
 interface AuthContextType {
   user: User | null;
@@ -37,7 +39,20 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     console.log("IN AUTHPROVIDER");
-    messaging.sendMessage("auth:getUser").then(setCurrentUser);
+    messaging.sendMessage("auth:getUser").then((user) => {
+      setCurrentUser(user);
+      setLoading(false);
+    });
+
+    const unsubscribe = messaging.onMessage("auth:stateChanged", ({ data }) => {
+      setCurrentUser(data);
+      console.log(data);
+      setLoading(false);
+    });
+
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   const loginWithGoogle = async () => {
@@ -60,21 +75,18 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
         const idToken = responseUrl.split("id_token=")[1].split("&")[0];
         const credential = GoogleAuthProvider.credential(idToken);
         const result = await signInWithCredential(auth, credential);
-        setCurrentUser(result.user);
+        // i think Tte onAuthStateChanged listener in the background script will handle the update
+        // setCurrentUser(result.user);
       } catch (err) {
         console.log(err);
       }
     } else {
-      // browser.runtime.sendMessage({ action: "signIn" }, (res) => {
-      //   console.log("handle", res);
-      // });
-      const userInfo = await messaging.sendMessage("auth:signIn");
-      setCurrentUser(userInfo);
+      await messaging.sendMessage("auth:signIn");
     }
   };
 
   const logout = async () => {
-    await signOut(auth);
+    await messaging.sendMessage("auth:signOut");
     setCurrentUser(null);
   };
 
@@ -84,6 +96,6 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     loginWithGoogle,
     logout,
   };
-  console.log("User", value.user?.displayName);
+  console.log("AuthContextProvider User", value.user?.displayName);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
