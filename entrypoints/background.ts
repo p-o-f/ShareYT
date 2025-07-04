@@ -101,3 +101,4 @@ async function firebaseAuth() {
     closeOffscreenDocument();
   }
 }
+
