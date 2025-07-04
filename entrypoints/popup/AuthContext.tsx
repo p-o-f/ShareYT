@@ -1,0 +1,98 @@
+import { createContext, ReactNode } from "react";
+import {
+  browserPopupRedirectResolver,
+  GoogleAuthProvider,
+  onAuthStateChanged,
+  signInWithPopup,
+  signOut,
+  User,
+} from "firebase/auth";
+
+interface AuthContextType {
+  user: User | null;
+  loading: boolean;
+  loginWithGoogle: () => Promise<void>;
+  logout: () => Promise<void>;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error("context is undefined");
+  }
+  return context;
+};
+
+const oauthclientId = "820825199730-3e2tk7rb9pq2d4uao2j16p5hr2p1usi6.apps.googleusercontent.com"; // from gcp
+
+export const isFirefoxExtension = () => {
+  return location.protocol === "moz-extension:";
+};
+
+
+const loginWithGoogle = async (
+  background: boolean,
+  oauthClientId: string
+): Promise<{
+  accessToken?: string;
+  idToken?: string;
+  status: ResponseStatus;
+  userData?: UserData;
+}> => {
+  if (background) {
+    return { status: "error" };
+  }
+
+  try {
+
+    if (isFirefoxExtension()) {
+      const nonce = Math.floor(Math.random() * 1000000);
+      const redirectUri = browser.identity.getRedirectURL();
+
+      console.log("Redirect URI:", redirectUri);
+
+      const responseUrl = await browser.identity.launchWebAuthFlow({
+        url: `https://accounts.google.com/o/oauth2/v2/auth?response_type=id_token&nonce=${nonce}&scope=openid%20profile&client_id=${oauthClientId}&redirect_uri=${redirectUri}`,
+        interactive: true,
+      });
+
+      if (!responseUrl) {
+        throw new Error("OAuth2 redirect failed : no response URL received.");
+      }
+
+      // Parse the response url for the id token
+      const idToken = responseUrl.split("id_token=")[1].split("&")[0];
+      const credential = GoogleAuthProvider.credential(idToken);
+      await signInWithCredential(auth, credential);
+  } else {
+    browser.runtime.sendMessage({ action: "signIn" }, (res) => {
+      console.log("handle", res);
+    });
+  }
+};
+
+const logout = async () => {
+  await signOut(auth);
+};
+
+export default function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setCurrentUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
+      setCurrentUser(u);
+      setLoading(false);
+    });
+    return unsubscribe;
+  }, []);
+
+  const value: AuthContextType = {
+    user,
+    loading,
+    loginWithGoogle: handleLogin,
+    logout: logout,
+  };
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
