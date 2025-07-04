@@ -1,7 +1,6 @@
 import { createContext, ReactNode } from "react";
 import {
   GoogleAuthProvider,
-  onAuthStateChanged,
   signInWithCredential,
   signOut,
   User,
@@ -37,12 +36,8 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
-      console.log("!!!! FirebaseAuthChanged", u?.displayName ?? "none");
-      setCurrentUser(u);
-      setLoading(false);
-    });
-    return () => unsubscribe();
+    console.log("IN AUTHPROVIDER");
+    messaging.sendMessage("auth:getUser").then(setCurrentUser);
   }, []);
 
   const loginWithGoogle = async () => {
@@ -70,9 +65,11 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
         console.log(err);
       }
     } else {
-      browser.runtime.sendMessage({ action: "signIn" }, (res) => {
-        console.log("handle", res);
-      });
+      // browser.runtime.sendMessage({ action: "signIn" }, (res) => {
+      //   console.log("handle", res);
+      // });
+      const userInfo = await messaging.sendMessage("auth:signIn");
+      setCurrentUser(userInfo);
     }
   };
 
@@ -87,5 +84,6 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     loginWithGoogle,
     logout,
   };
+  console.log("User", value.user?.displayName);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

@@ -1,9 +1,21 @@
 /// <reference lib="webworker" />
+// import { ExtUserInfo } from "@/utils/messaging";
+import { onAuthStateChanged, User } from "firebase/auth";
 import { PublicPath } from "wxt/browser";
 
 export default defineBackground(() => {
-  console.log("Hello background!", { id: browser.runtime.id });
-  browser.runtime.onMessage.addListener(authListener);
+  // browser.runtime.onMessage.addListener(authListener);
+  onAuthStateChanged(auth, (user) => {
+    storage.setItem("local:user", user);
+  });
+  messaging.onMessage("auth:getUser", async () => {
+    const user = await storage.getItem<User>("local:user");
+    console.log("in messaging, user:", user);
+    return user;
+  });
+  messaging.onMessage("auth:signIn", async () => {
+    return await firebaseAuth();
+  });
 });
 
 const OFFSCREEN_DOCUMENT_PATH = "/offscreen.html";
@@ -50,12 +62,11 @@ async function getAuth() {
     type: "firebase-auth",
     target: "offscreen",
   });
-
   if (auth?.name === "FirebaseError") {
-    throw auth;
+    // throw auth;
+    return null;
   }
-
-  return auth;
+  return auth as User;
 }
 
 async function firebaseAuth() {
@@ -81,15 +92,11 @@ async function firebaseAuth() {
   }
 }
 
-function authListener(
-  message: any, // eslint-disable-line @typescript-eslint/no-explicit-any
-  _sender: Browser.runtime.MessageSender,
-  sendResponse: (response?: any) => void, // eslint-disable-line @typescript-eslint/no-explicit-any
-) {
-  if (message.action == "signIn") {
-    firebaseAuth().then((auth) => {
-      sendResponse(auth);
-    });
-  }
-  return true;
+function authListener() {
+  // message: any, // eslint-disable-line @typescript-eslint/no-explicit-any
+  // _sender: Browser.runtime.MessageSender,
+  // sendResponse: (response?: any) => void, // eslint-disable-line @typescript-eslint/no-explicit-any
+  // firebaseAuth().then((auth) => {
+  //   sendResponse(auth);
+  // });
 }
