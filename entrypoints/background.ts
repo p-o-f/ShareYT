@@ -4,40 +4,60 @@ import { onAuthStateChanged, User, signOut } from "firebase/auth";
 import { PublicPath } from "wxt/browser";
 import { auth } from "../utils/firebase";
 
+// Serialize the Firebase user into a structured cloneable object (mv2 needs this ig)
+function safeUser(user: User) { 
+  return {
+    uid: user.uid,
+    email: user.email,
+    displayName: user.displayName,
+    photoURL: user.photoURL,
+    emailVerified: user.emailVerified,
+    isAnonymous: user.isAnonymous,
+    providerData: user.providerData.map((p) => ({ ...p })),
+  };
+}
+
 export default defineBackground(() => {
   const unsubscribe = onAuthStateChanged(auth, async (user) => {
     console.log("Auth state changed in background:", user?.displayName);
-    await storage.setItem("local:user", user);
-    messaging.sendMessage("auth:stateChanged", user);
+
+    // debug serialization
+    try {
+      console.log("user payload", JSON.stringify(user));
+    } catch (err) {
+      console.error("Failed to JSON.stringify user:", err);
+    }
+
+    const serialized = user ? safeUser(user) : null;
+
+    await storage.setItem("local:user", serialized);
+    messaging.sendMessage("auth:stateChanged", serialized);
   });
 
   messaging.onMessage("auth:getUser", async () => {
-    const user = await storage.getItem<User>("local:user");
+    const user = await storage.getItem<ReturnType<typeof safeUser>>("local:user");
     console.log("in messaging, user:", user);
     return user;
   });
 
   messaging.onMessage("auth:signIn", async () => {
     const user = await firebaseAuth();
-    // TODO: `onAuthStateChanged` should be triggering, but its not.. so have to do below
-    // few lines manually, look into this
-    await storage.setItem("local:user", user);
-    messaging.sendMessage("auth:stateChanged", user);
-    // end manual work that should be handled by `onAuthStateChanged`
-    return user;
+    const serialized = user ? safeUser(user) : null;
+
+    await storage.setItem("local:user", serialized);
+    messaging.sendMessage("auth:stateChanged", serialized);
+
+    return serialized;
   });
 
   messaging.onMessage("auth:signOut", async () => {
     await signOut(auth);
-    // onAuthStateChanged *should* fire and handle broadcasting the null user
-    // but i think same issue as above
+    // Let onAuthStateChanged handle null broadcast
   });
 });
 
 const OFFSCREEN_DOCUMENT_PATH = "/offscreen.html";
-
 let creatingOffscreenDocument: Promise<void> | null;
-
 // Chrome only allows for a single offscreenDocument. This is a helper function
 // that returns a boolean indicating if a document is already active.
 async function hasOffscreenDocument() {
@@ -67,18 +87,14 @@ async function setupOffscreenDocument(path: PublicPath) {
 }
 
 async function closeOffscreenDocument() {
-  if (!(await hasOffscreenDocument())) {
-    return;
-  }
+  if (!(await hasOffscreenDocument())) return;
   await browser.offscreen.closeDocument();
 }
 
 async function getAuth() {
   const auth = await messaging.sendMessage("auth:chromeOffscreen");
-  if (auth?.name === "FirebaseError") {
-    // throw auth;
-    return null;
-  }
+  if (auth?.name === "FirebaseError") return null;
+  // throw auth;
   return auth as User;
 }
 
@@ -88,11 +104,9 @@ async function firebaseAuth() {
     const auth = await getAuth();
     console.log("User Authenticated:", auth);
     return auth;
-  } catch (err: any /* eslint-disable-line @typescript-eslint/no-explicit-any */) {
+  } catch (err: any) {
     if (err.code === "auth/operation-not-allowed") {
-      console.error(
-        "You must enable an OAuth provider in the Firebase console to use signInWithPopup. This sample uses Google by default.",
-      );
+      console.error("Enable an OAuth provider in the Firebase console.");
     } else {
       console.error("Authentication error:", err);
     }
@@ -101,4 +115,3 @@ async function firebaseAuth() {
     closeOffscreenDocument();
   }
 }
-
