@@ -81,7 +81,7 @@ async function firebaseAuth() {
   }
 }
 
-async function authListener(
+function authListener(
   message: any, // eslint-disable-line @typescript-eslint/no-explicit-any
   _sender: Browser.runtime.MessageSender,
   sendResponse: (response?: any) => void, // eslint-disable-line @typescript-eslint/no-explicit-any
