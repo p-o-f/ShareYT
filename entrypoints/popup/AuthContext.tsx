@@ -1,9 +1,8 @@
 import { createContext, ReactNode } from "react";
 import {
-  browserPopupRedirectResolver,
   GoogleAuthProvider,
   onAuthStateChanged,
-  signInWithPopup,
+  signInWithCredential,
   signOut,
   User,
 } from "firebase/auth";
@@ -24,29 +23,20 @@ export const useAuth = () => {
   return context;
 };
 
-const oauthclientId = "820825199730-3e2tk7rb9pq2d4uao2j16p5hr2p1usi6.apps.googleusercontent.com"; // from gcp
+const oauthClientId =
+  "820825199730-3e2tk7rb9pq2d4uao2j16p5hr2p1usi6.apps.googleusercontent.com"; // from gcp
 
 export const isFirefoxExtension = () => {
   return location.protocol === "moz-extension:";
 };
 
+const loginWithGoogle = async () => {
+  // if (background) {
+  //   return { status: "error" };
+  // }
 
-const loginWithGoogle = async (
-  background: boolean,
-  oauthClientId: string
-): Promise<{
-  accessToken?: string;
-  idToken?: string;
-  status: ResponseStatus;
-  userData?: UserData;
-}> => {
-  if (background) {
-    return { status: "error" };
-  }
-
-  try {
-
-    if (isFirefoxExtension()) {
+  if (isFirefoxExtension()) {
+    try {
       const nonce = Math.floor(Math.random() * 1000000);
       const redirectUri = browser.identity.getRedirectURL();
 
@@ -65,6 +55,9 @@ const loginWithGoogle = async (
       const idToken = responseUrl.split("id_token=")[1].split("&")[0];
       const credential = GoogleAuthProvider.credential(idToken);
       await signInWithCredential(auth, credential);
+    } catch (err) {
+      console.log(err);
+    }
   } else {
     browser.runtime.sendMessage({ action: "signIn" }, (res) => {
       console.log("handle", res);
@@ -91,8 +84,8 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   const value: AuthContextType = {
     user,
     loading,
-    loginWithGoogle: handleLogin,
-    logout: logout,
+    loginWithGoogle,
+    logout,
   };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

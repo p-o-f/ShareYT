@@ -5,7 +5,7 @@ export default function LoginForm() {
   console.log("user", user);
   return (
     <>
-      {user}
+      {user?.displayName}
       <button onClick={loginWithGoogle}>Login</button>
       <button onClick={logout}>Logout</button>
     </>
