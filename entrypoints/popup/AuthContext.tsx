@@ -48,11 +48,11 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginWithGoogle = async () => {
     if (isFirefoxExtension()) {
-      console.log("Performing Firefox Google login (AuthContext.tsx)");
-      await messaging.sendMessage("auth:signInFirefox");
+      console.log('Performing Firefox Google login (AuthContext.tsx)');
+      await messaging.sendMessage('auth:signInFirefox');
     } else {
-      console.log("Performing Chrome Google login (AuthContext.tsx)");
-      await messaging.sendMessage("auth:signIn");
+      console.log('Performing Chrome Google login (AuthContext.tsx)');
+      await messaging.sendMessage('auth:signIn');
     }
   };
 

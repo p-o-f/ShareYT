@@ -9,17 +9,9 @@ export default function LoginForm() {
 
   return (
     <div>
-      {user && (
-        <div>
-          Hi, {user.displayName || user.email || "User"}!
-        </div>
-      )}
-      {!user && (
-        <button onClick={loginWithGoogle}>Sign In</button>
-      )}
-      {user && (
-        <button onClick={logout}>Sign Out</button>
-      )}
+      {user && <div>Hi, {user.displayName || user.email || 'User'}!</div>}
+      {!user && <button onClick={loginWithGoogle}>Sign In</button>}
+      {user && <button onClick={logout}>Sign Out</button>}
     </div>
   );
 }
