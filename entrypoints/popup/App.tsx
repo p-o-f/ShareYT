@@ -1,6 +1,6 @@
-import "./App.css";
-import AuthProvider from "./AuthContext";
-import LoginForm from "./LoginForm";
+import './App.css';
+import AuthProvider from './AuthContext';
+import LoginForm from './LoginForm';
 
 export default function App() {
   return (
