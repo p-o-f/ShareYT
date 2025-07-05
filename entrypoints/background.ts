@@ -1,13 +1,25 @@
 /// <reference lib="webworker" />
 declare const clients: Clients;
-import { onAuthStateChanged, User, signOut } from "firebase/auth";
+import {
+  onAuthStateChanged,
+  User,
+  signOut,
+  signInWithCredential,
+  GoogleAuthProvider,
+} from "firebase/auth";
 import { PublicPath } from "wxt/browser";
 import { auth } from "../utils/firebase";
 
 // Define a type for the serialized user
 type SerializedUser = Pick<
   User,
-  "uid" | "email" | "displayName" | "photoURL" | "emailVerified" | "isAnonymous" | "providerData"
+  | "uid"
+  | "email"
+  | "displayName"
+  | "photoURL"
+  | "emailVerified"
+  | "isAnonymous"
+  | "providerData"
 >;
 
 // Serialize the Firebase user into a structured cloneable object (mv2 needs this ig)
@@ -23,16 +35,45 @@ function serializeUser(user: User): SerializedUser {
   };
 }
 
+const oauthClientId =
+  "820825199730-3e2tk7rb9pq2d4uao2j16p5hr2p1usi6.apps.googleusercontent.com"; // from gcp
+
+const performFirefoxGoogleLogin = async (): Promise<void> => {
+  try {
+    const nonce = Math.floor(Math.random() * 1000000);
+    const redirectUri = browser.identity.getRedirectURL();
+
+    console.log("Redirect URI:", redirectUri);
+
+    const responseUrl = await browser.identity.launchWebAuthFlow({
+      url: `https://accounts.google.com/o/oauth2/v2/auth?response_type=id_token&nonce=${nonce}&scope=openid%20profile&client_id=${oauthClientId}&redirect_uri=${redirectUri}`,
+      interactive: true,
+    });
+
+    if (!responseUrl) {
+      throw new Error("OAuth2 redirect failed : no response URL received.");
+    }
+
+    const idToken = responseUrl.split("id_token=")[1].split("&")[0];
+    const credential = GoogleAuthProvider.credential(idToken);
+    const result = await signInWithCredential(auth, credential);
+    // i think The onAuthStateChanged listener in the background script will handle the update
+    // setCurrentUser(result.user);
+  } catch (err) {
+    console.log(err);
+  }
+};
+
 export default defineBackground(() => {
   const unsubscribe = onAuthStateChanged(auth, async (user) => {
     console.log("Auth state changed in background:", user?.displayName);
 
     // debug serialization
-    try {
-      console.log("user payload", JSON.stringify(user));
-    } catch (err) {
-      console.error("Failed to JSON.stringify user:", err);
-    }
+    // try {
+    //   console.log("user payload is", JSON.stringify(user));
+    // } catch (err) {
+    //   console.error("Failed to JSON.stringify user:", err);
+    // }
 
     const serialized: SerializedUser | null = user ? serializeUser(user) : null;
 
@@ -54,6 +95,11 @@ export default defineBackground(() => {
     messaging.sendMessage("auth:stateChanged", serialized);
 
     return serialized;
+  });
+
+  messaging.onMessage("auth:signInFirefox", async () => {
+    await performFirefoxGoogleLogin();
+    // The onAuthStateChanged listener in the background script will handle the update
   });
 
   messaging.onMessage("auth:signOut", async () => {
