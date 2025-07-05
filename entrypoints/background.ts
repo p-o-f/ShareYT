@@ -68,7 +68,7 @@ export default defineBackground(() => {
     return user;
   });
 
-  messaging.onMessage("auth:signIn", async () => {
+  messaging.onMessage('auth:signIn', async () => {
     const user = await firebaseAuth();
 
     const serialized = user ? safeUser(user) : null;
@@ -89,7 +89,7 @@ export default defineBackground(() => {
     // The onAuthStateChanged listener in the background script will handle the update
   });
 
-  messaging.onMessage("auth:signOut", async () => {
+  messaging.onMessage('auth:signOut', async () => {
     await signOut(auth);
     // Let onAuthStateChanged handle null broadcast
   });
@@ -117,7 +117,7 @@ async function setupOffscreenDocument(path: PublicPath) {
       creatingOffscreenDocument = browser.offscreen.createDocument({
         url: path,
         reasons: [browser.offscreen.Reason.DOM_SCRAPING],
-        justification: "auth",
+        justification: 'auth',
       });
       await creatingOffscreenDocument;
       creatingOffscreenDocument = null;
@@ -141,13 +141,13 @@ async function firebaseAuth() {
   try {
     await setupOffscreenDocument(OFFSCREEN_DOCUMENT_PATH);
     const auth = await getAuth();
-    console.log("User Authenticated:", auth);
+    console.log('User Authenticated:', auth);
     return auth;
   } catch (err: any) {
     if (err.code === "auth/operation-not-allowed") {
       console.error("Enable an OAuth provider in the Firebase console.");
     } else {
-      console.error("Authentication error:", err);
+      console.error('Authentication error:', err);
     }
     return null;
   } finally {
