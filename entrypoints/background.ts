@@ -22,19 +22,6 @@ type SerializedUser = Pick<
   | "providerData"
 >;
 
-// Serialize the Firebase user into a structured cloneable object (mv2 needs this ig)
-function serializeUser(user: User): SerializedUser {
-  return {
-    uid: user.uid,
-    email: user.email,
-    displayName: user.displayName,
-    photoURL: user.photoURL,
-    emailVerified: user.emailVerified,
-    isAnonymous: user.isAnonymous,
-    providerData: user.providerData.map((p) => ({ ...p })),
-  };
-}
-
 const oauthClientId =
   "820825199730-3e2tk7rb9pq2d4uao2j16p5hr2p1usi6.apps.googleusercontent.com"; // from gcp
 
@@ -68,14 +55,14 @@ export default defineBackground(() => {
   const unsubscribe = onAuthStateChanged(auth, async (user) => {
     console.log("Auth state changed in background:", user?.displayName);
 
-    // debug serialization
-    // try {
-    //   console.log("user payload is", JSON.stringify(user));
-    // } catch (err) {
-    //   console.error("Failed to JSON.stringify user:", err);
-    // }
-
-    const serialized: SerializedUser | null = user ? serializeUser(user) : null;
+    let serialized: SerializedUser | null;
+    if (user) {
+      // User is logged in
+      serialized = user as SerializedUser;
+    } else {
+      // User is logged out
+      serialized = null;
+    }
 
     await storage.setItem("local:user", serialized);
     messaging.sendMessage("auth:stateChanged", serialized);
@@ -89,7 +76,18 @@ export default defineBackground(() => {
 
   messaging.onMessage("auth:signIn", async () => {
     const user = await firebaseAuth();
-    const serialized: SerializedUser | null = user ? serializeUser(user) : null;
+
+    let serialized: SerializedUser | null;
+    if (user) {
+      // User is logged in
+      serialized = user as SerializedUser;
+    } else {
+      // User is logged out
+      console.error("serializeUser: user is null, cannot serialize.");
+      //throw new Error("serializeUser: user is null, cannot serialize.");
+      serialized = null;
+    }
+
     // manual work that should be handled by onAuthStateChanged but isn't for some reason TODO: fix this
     await storage.setItem("local:user", serialized);
     messaging.sendMessage("auth:stateChanged", serialized);
