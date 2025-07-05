@@ -26,9 +26,6 @@ export const useAuth = () => {
   return context;
 };
 
-const oauthClientId =
-  "820825199730-3e2tk7rb9pq2d4uao2j16p5hr2p1usi6.apps.googleusercontent.com"; // from gcp
-
 export const isFirefoxExtension = () => {
   return location.protocol === "moz-extension:";
 };
@@ -57,30 +54,10 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginWithGoogle = async () => {
     if (isFirefoxExtension()) {
-      try {
-        const nonce = Math.floor(Math.random() * 1000000);
-        const redirectUri = browser.identity.getRedirectURL();
-
-        console.log("Redirect URI:", redirectUri);
-
-        const responseUrl = await browser.identity.launchWebAuthFlow({
-          url: `https://accounts.google.com/o/oauth2/v2/auth?response_type=id_token&nonce=${nonce}&scope=openid%20profile&client_id=${oauthClientId}&redirect_uri=${redirectUri}`,
-          interactive: true,
-        });
-
-        if (!responseUrl) {
-          throw new Error("OAuth2 redirect failed : no response URL received.");
-        }
-
-        const idToken = responseUrl.split("id_token=")[1].split("&")[0];
-        const credential = GoogleAuthProvider.credential(idToken);
-        const result = await signInWithCredential(auth, credential);
-        // i think The onAuthStateChanged listener in the background script will handle the update
-        // setCurrentUser(result.user);
-      } catch (err) {
-        console.log(err);
-      }
+      console.log("Performing Firefox Google login (AuthContext.tsx)");
+      await messaging.sendMessage("auth:signInFirefox");
     } else {
+      console.log("Performing Chrome Google login (AuthContext.tsx)");
       await messaging.sendMessage("auth:signIn");
     }
   };
