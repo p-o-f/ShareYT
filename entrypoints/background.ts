@@ -10,17 +10,18 @@ import {
 import { PublicPath } from "wxt/browser";
 import { auth } from "../utils/firebase";
 
-// Define a type for the serialized user
-type SerializedUser = Pick<
-  User,
-  | "uid"
-  | "email"
-  | "displayName"
-  | "photoURL"
-  | "emailVerified"
-  | "isAnonymous"
-  | "providerData"
->;
+// Serialize the Firebase user into a structured cloneable object (mv2 needs this ig)
+function safeUser(user: User) { 
+  return {
+    uid: user.uid,
+    email: user.email,
+    displayName: user.displayName,
+    photoURL: user.photoURL,
+    emailVerified: user.emailVerified,
+    isAnonymous: user.isAnonymous,
+    providerData: user.providerData.map((p) => ({ ...p })),
+  };
+}
 
 const oauthClientId =
   "820825199730-3e2tk7rb9pq2d4uao2j16p5hr2p1usi6.apps.googleusercontent.com"; // from gcp
@@ -55,21 +56,14 @@ export default defineBackground(() => {
   const unsubscribe = onAuthStateChanged(auth, async (user) => {
     console.log("Auth state changed in background:", user?.displayName);
 
-    let serialized: SerializedUser | null;
-    if (user) {
-      // User is logged in
-      serialized = user as SerializedUser;
-    } else {
-      // User is logged out
-      serialized = null;
-    }
+    const serialized = user ? safeUser(user) : null;
 
     await storage.setItem("local:user", serialized);
     messaging.sendMessage("auth:stateChanged", serialized);
   });
 
   messaging.onMessage("auth:getUser", async () => {
-    const user = await storage.getItem<SerializedUser>("local:user");
+    const user = await storage.getItem<ReturnType<typeof safeUser>>("local:user");
     console.log("in messaging, user:", user);
     return user;
   });
@@ -77,15 +71,10 @@ export default defineBackground(() => {
   messaging.onMessage("auth:signIn", async () => {
     const user = await firebaseAuth();
 
-    let serialized: SerializedUser | null;
-    if (user) {
-      // User is logged in
-      serialized = user as SerializedUser;
-    } else {
-      // User is logged out
+    const serialized = user ? safeUser(user) : null;
+    if (!serialized) { // logged out 
       console.error("serializeUser: user is null, cannot serialize.");
-      //throw new Error("serializeUser: user is null, cannot serialize.");
-      serialized = null;
+      // throw new Error("serializeUser: user is null, cannot serialize.");
     }
 
     // manual work that should be handled by onAuthStateChanged but isn't for some reason TODO: fix this
