@@ -90,10 +90,10 @@ export default defineBackground(() => {
   messaging.onMessage("auth:signIn", async () => {
     const user = await firebaseAuth();
     const serialized: SerializedUser | null = user ? serializeUser(user) : null;
-
+    // manual work that should be handled by onAuthStateChanged but isn't for some reason TODO: fix this
     await storage.setItem("local:user", serialized);
     messaging.sendMessage("auth:stateChanged", serialized);
-
+    // end manual work that should be handled by onAuthStateChanged
     return serialized;
   });
 
