@@ -18,6 +18,13 @@ export default defineConfig({
           strict_min_version: '115.0', // minimum Firefox version
         },
       },
+      web_accessible_resources: [
+        // needed for the dashboard.html to be accessible from any web page or content script
+        {
+          resources: ['dashboard.html'],
+          matches: ['<all_urls>'], // todo make URLs more specific for security probably - just need this so content scripts can access the dashboard
+        },
+      ],
     };
   },
 });

@@ -10,7 +10,7 @@ import {
 import { PublicPath } from 'wxt/browser';
 import { auth } from '../utils/firebase';
 
-// Serialize the Firebase user into a structured cloneable object (mv2 needs this ig)
+// Serialize the Firebase user into a structured cloneable object
 function safeUser(user: User) {
   return {
     uid: user.uid,
@@ -24,7 +24,7 @@ function safeUser(user: User) {
 }
 
 const oauthClientId =
-  '820825199730-3e2tk7rb9pq2d4uao2j16p5hr2p1usi6.apps.googleusercontent.com'; // from gcp
+  '820825199730-3e2tk7rb9pq2d4uao2j16p5hr2p1usi6.apps.googleusercontent.com'; // From GCP, safe to be publicly accessible
 
 const performFirefoxGoogleLogin = async (): Promise<void> => {
   try {
@@ -45,7 +45,7 @@ const performFirefoxGoogleLogin = async (): Promise<void> => {
     const idToken = responseUrl.split('id_token=')[1].split('&')[0];
     const credential = GoogleAuthProvider.credential(idToken);
     const result = await signInWithCredential(auth, credential);
-    // i think The onAuthStateChanged listener in the background script will handle the update
+    // yb: i think The onAuthStateChanged listener in the background script will handle the update
     // setCurrentUser(result.user);
   } catch (err) {
     console.log(err);
