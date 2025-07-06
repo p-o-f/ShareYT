@@ -12,6 +12,16 @@ export default function LoginForm() {
       {user && <div>Hi, {user.displayName || user.email || 'User'}!</div>}
       {!user && <button onClick={loginWithGoogle}>Sign In</button>}
       {user && <button onClick={logout}>Sign Out</button>}
+      {user && (
+        <button
+          onClick={() => {
+            const url = browser.runtime.getURL('/dashboard.html');
+            window.open(url, '_blank');
+          }}
+        >
+          View Dashboard
+        </button>
+      )}
     </div>
   );
 }
