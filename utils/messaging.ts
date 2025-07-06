@@ -1,18 +1,18 @@
+import { SerializedUser } from '@/entrypoints/background';
 import { defineExtensionMessaging } from '@webext-core/messaging';
-import type { User } from 'firebase/auth';
 
-export type ExtUserInfo = Pick<User, 'displayName' | 'photoURL' | 'email'>;
 interface MessagingProtocol {
   // UI->Background messages
-  'auth:signIn': () => User | null;
-  'auth:signInFirefox': () => Promise<User | null>;
-  'auth:signOut': () => Promise<void>;
-  'auth:getUser': () => User | null;
+  'auth:signIn': () => SerializedUser | null;
+  'auth:signInFirefox': () => void;
+  'auth:signOut': () => void;
+  'auth:getUser': () => SerializedUser | null;
+  'summarize:video': () => string;
   // Background->UI messages
-  'auth:stateChanged': (user: User | null) => void;
+  'auth:stateChanged': (user: SerializedUser | null) => void;
   // Background->Offscreen messages
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   'auth:chromeOffscreen': () => Promise<any>;
-  'summarize:video': () => Promise<string>;
 }
 
 export const messaging = defineExtensionMessaging<MessagingProtocol>();

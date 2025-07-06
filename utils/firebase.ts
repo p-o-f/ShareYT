@@ -1,3 +1,4 @@
+import { getAI, GoogleAIBackend } from 'firebase/ai';
 import { FirebaseOptions, initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
@@ -13,7 +14,8 @@ const firebaseConfig: FirebaseOptions = {
   measurementId: 'G-78R129K63L',
 };
 
-export const app = initializeApp(firebaseConfig);
+const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const fbStorage = getStorage(app);
+export const ai = getAI(app, { backend: new GoogleAIBackend() });

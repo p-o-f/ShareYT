@@ -8,52 +8,46 @@ import {
   GoogleAuthProvider,
 } from 'firebase/auth';
 import { PublicPath } from 'wxt/browser';
-import { auth, app } from '../utils/firebase';
-import { getAI, getGenerativeModel, GoogleAIBackend } from 'firebase/ai';
+import { ai, auth } from '../utils/firebase';
+import { getGenerativeModel } from 'firebase/ai';
 
 //------------------------------------------------------------------------ AI setup stuff (for later)
-// Initialize the Gemini Developer API backend service
-const ai = getAI(app, { backend: new GoogleAIBackend() });
-
-// Create a `GenerativeModel` instance with a model that supports your use case
 const model = getGenerativeModel(ai, { model: 'gemini-2.5-flash' });
 
-// Wrap in an async function so can use await
-async function summarizeVideo(
-  videoUrl: string = 'https://youtu.be/q6EoRBvdVPQ',
-) {
-  // example url
-  // Provide a prompt that contains text
+async function summarizeVideo(videoUrl: string) {
   const prompt =
     'Summarize the following video and also output its title: ' + videoUrl;
 
-  // To generate text output, call generateContent with the text input
   const result = await model.generateContent(prompt);
 
   const response = result.response;
   const text = response.text();
   console.log(text);
+  return text;
 }
 //------------------------------------------------------------------------ End AI setup stuff
 
-// Serialize the Firebase user into a structured cloneable object
-function safeUser(user: User) {
+export type SerializedUser = Pick<
+  User,
+  'uid' | 'email' | 'displayName' | 'photoURL'
+>;
+
+function toSerializedUser(user: User): SerializedUser {
   return {
     uid: user.uid,
     email: user.email,
     displayName: user.displayName,
     photoURL: user.photoURL,
-    emailVerified: user.emailVerified,
-    isAnonymous: user.isAnonymous,
-    providerData: user.providerData.map((p) => ({ ...p })),
+    // emailVerified: user.emailVerified,
+    // isAnonymous: user.isAnonymous,
+    // providerData: user.providerData.map((p) => ({ ...p })),
   };
 }
 
 const oauthClientId =
-  '820825199730-3e2tk7rb9pq2d4uao2j16p5hr2p1usi6.apps.googleusercontent.com'; // From GCP, safe to be publicly accessible
-('820825199730-3e2tk7rb9pq2d4uao2j16p5hr2p1usi6.apps.googleusercontent.com'); // From GCP, safe to be publicly accessible
+  '820825199730-3e2tk7rb9pq2d4uao2j16p5hr2p1usi6.apps.googleusercontent.com';
 
-const performFirefoxGoogleLogin = async (): Promise<void> => {
+const performFirefoxGoogleLogin = async () => {
   try {
     const nonce = Math.floor(Math.random() * 1000000);
     const redirectUri = browser.identity.getRedirectURL();
@@ -73,18 +67,18 @@ const performFirefoxGoogleLogin = async (): Promise<void> => {
     const credential = GoogleAuthProvider.credential(idToken);
     const result = await signInWithCredential(auth, credential);
     // yb: i think The onAuthStateChanged listener in the background script will handle the update
-    // yb: i think The onAuthStateChanged listener in the background script will handle the update
-    // setCurrentUser(result.user);
+    return result;
   } catch (err) {
     console.log(err);
+    return null;
   }
 };
 
 export default defineBackground(() => {
-  const unsubscribe = onAuthStateChanged(auth, async (user) => {
+  onAuthStateChanged(auth, async (user) => {
     console.log('Auth state changed in background:', user?.displayName);
 
-    const serialized = user ? safeUser(user) : null;
+    const serialized = user ? toSerializedUser(user) : null;
 
     await storage.setItem('local:user', serialized);
     messaging.sendMessage('auth:stateChanged', serialized);
@@ -92,7 +86,7 @@ export default defineBackground(() => {
 
   messaging.onMessage('auth:getUser', async () => {
     const user =
-      await storage.getItem<ReturnType<typeof safeUser>>('local:user');
+      await storage.getItem<ReturnType<typeof toSerializedUser>>('local:user');
     console.log('in messaging, user:', user);
     return user;
   });
@@ -100,7 +94,7 @@ export default defineBackground(() => {
   messaging.onMessage('auth:signIn', async () => {
     const user = await firebaseAuth();
 
-    const serialized = user ? safeUser(user) : null;
+    const serialized = user ? toSerializedUser(user) : null;
     if (!serialized) {
       // logged out
       console.error('serializeUser: user is null, cannot serialize.');
@@ -111,6 +105,7 @@ export default defineBackground(() => {
     await storage.setItem('local:user', serialized);
     messaging.sendMessage('auth:stateChanged', serialized);
     // end manual work that should be handled by onAuthStateChanged
+    // TODO: no need to return anything
     return serialized;
   });
 
@@ -124,10 +119,10 @@ export default defineBackground(() => {
     // Let onAuthStateChanged handle null broadcast
   });
 
-  messaging.onMessage('summarize:video', async () => {
+  messaging.onMessage('summarize:video', () => {
     const videoUrl =
       'https://www.youtube.com/watch?v=YpPGRJhOP8k&pp=ygUYYW1hemZpdCBiYWxhbmNlIDIgcmV2aWV3'; // temporary hardcoded URL for testing
-    const summary = await summarizeVideo(videoUrl);
+    const summary = summarizeVideo(videoUrl);
     return summary;
   });
 });
@@ -180,6 +175,7 @@ async function firebaseAuth() {
     const auth = await getAuth();
     console.log('User Authenticated:', auth);
     return auth;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (err: any) {
     if (err.code === 'auth/operation-not-allowed') {
       console.error('Enable an OAuth provider in the Firebase console.');
