@@ -1,6 +1,6 @@
 import { getAI, GoogleAIBackend } from 'firebase/ai';
 import { FirebaseOptions, initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { getAuth, User } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
@@ -19,3 +19,18 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const fbStorage = getStorage(app);
 export const ai = getAI(app, { backend: new GoogleAIBackend() });
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function isFirebaseUser(user: any): user is User {
+  return (
+    typeof user === 'object' &&
+    user !== null &&
+    typeof user.uid === 'string' &&
+    'email' in user &&
+    'displayName' in user &&
+    'photoURL' in user &&
+    'emailVerified' in user &&
+    'isAnonymous' in user &&
+    Array.isArray(user.providerData)
+  );
+}
