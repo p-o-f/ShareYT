@@ -1,6 +1,6 @@
 export default defineContentScript({
-  matches: ['*://*.google.com/*'],
-  main() {
+  matches: ['*://*.youtube.com/*'],
+  main(_ctx) {
     console.log('Hello content.');
   },
 });

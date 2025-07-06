@@ -1,7 +1,7 @@
 import { createContext, ReactNode } from 'react';
-import { GoogleAuthProvider, signInWithCredential, User } from 'firebase/auth';
-import { auth } from '../../utils/firebase';
+import { User } from 'firebase/auth';
 import { messaging } from '../../utils/messaging';
+import { SerializedUser } from '@/types/types';
 
 interface AuthContextType {
   user: User | null;
@@ -25,7 +25,7 @@ export const isFirefoxExtension = () => {
 };
 
 export default function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setCurrentUser] = useState<User | null>(null);
+  const [user, setCurrentUser] = useState<SerializedUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
