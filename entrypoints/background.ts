@@ -8,7 +8,30 @@ import {
   GoogleAuthProvider,
 } from 'firebase/auth';
 import { PublicPath } from 'wxt/browser';
-import { auth } from '../utils/firebase';
+import { auth , app} from '../utils/firebase';
+import { getAI, getGenerativeModel, GoogleAIBackend } from "firebase/ai";
+
+
+//------------------------------------------------------------------------ AI setup stuff (for later)
+// Initialize the Gemini Developer API backend service
+const ai = getAI(app, { backend: new GoogleAIBackend() });
+
+// Create a `GenerativeModel` instance with a model that supports your use case
+const model = getGenerativeModel(ai, { model: "gemini-2.5-flash" });
+
+// Wrap in an async function so can use await
+async function summarizeVideo(videoUrl: string = 'https://youtu.be/q6EoRBvdVPQ') { // example url
+  // Provide a prompt that contains text
+  const prompt = "Summarize the following video and also output its title: " + videoUrl;
+
+  // To generate text output, call generateContent with the text input
+  const result = await model.generateContent(prompt);
+
+  const response = result.response;
+  const text = response.text();
+  console.log(text);
+}
+//------------------------------------------------------------------------ End AI setup stuff
 
 // Serialize the Firebase user into a structured cloneable object
 function safeUser(user: User) {
@@ -94,6 +117,12 @@ export default defineBackground(() => {
   messaging.onMessage('auth:signOut', async () => {
     await signOut(auth);
     // Let onAuthStateChanged handle null broadcast
+  });
+
+  messaging.onMessage('summarize:video', async ( ) => {
+    const videoUrl = 'https://www.youtube.com/watch?v=YpPGRJhOP8k&pp=ygUYYW1hemZpdCBiYWxhbmNlIDIgcmV2aWV3'; // temporary hardcoded URL for testing
+    const summary = await summarizeVideo(videoUrl);
+    return summary;
   });
 });
 

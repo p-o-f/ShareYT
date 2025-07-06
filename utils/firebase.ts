@@ -13,7 +13,7 @@ const firebaseConfig: FirebaseOptions = {
   measurementId: 'G-78R129K63L',
 };
 
-const app = initializeApp(firebaseConfig);
+export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const fbStorage = getStorage(app);

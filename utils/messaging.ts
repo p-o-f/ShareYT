@@ -12,6 +12,7 @@ interface MessagingProtocol {
   'auth:stateChanged': (user: User | null) => void;
   // Background->Offscreen messages
   'auth:chromeOffscreen': () => Promise<any>;
+  'summarize:video': () => Promise<string>;
 }
 
 export const messaging = defineExtensionMessaging<MessagingProtocol>();
