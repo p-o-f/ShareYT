@@ -48,6 +48,7 @@ function safeUser(user: User) {
 
 const oauthClientId =
   '820825199730-3e2tk7rb9pq2d4uao2j16p5hr2p1usi6.apps.googleusercontent.com'; // From GCP, safe to be publicly accessible
+  '820825199730-3e2tk7rb9pq2d4uao2j16p5hr2p1usi6.apps.googleusercontent.com'; // From GCP, safe to be publicly accessible
 
 const performFirefoxGoogleLogin = async (): Promise<void> => {
   try {
@@ -68,6 +69,7 @@ const performFirefoxGoogleLogin = async (): Promise<void> => {
     const idToken = responseUrl.split('id_token=')[1].split('&')[0];
     const credential = GoogleAuthProvider.credential(idToken);
     const result = await signInWithCredential(auth, credential);
+    // yb: i think The onAuthStateChanged listener in the background script will handle the update
     // yb: i think The onAuthStateChanged listener in the background script will handle the update
     // setCurrentUser(result.user);
   } catch (err) {
