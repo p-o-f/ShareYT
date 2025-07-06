@@ -11,8 +11,7 @@ export default function LoginForm() {
   }
 
   const handleSummarize = async () => {
-    const 
-    result = await messaging.sendMessage('summarize:video');
+    const result = await messaging.sendMessage('summarize:video');
     setSummary(result);
   };
 
