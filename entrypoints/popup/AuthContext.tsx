@@ -1,10 +1,9 @@
 import { createContext, ReactNode } from 'react';
-import { User } from 'firebase/auth';
 import { messaging } from '../../utils/messaging';
 import { SerializedUser } from '@/types/types';
 
 interface AuthContextType {
-  user: User | null;
+  user: SerializedUser | null;
   loading: boolean;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
