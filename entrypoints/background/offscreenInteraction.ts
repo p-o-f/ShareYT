@@ -68,6 +68,6 @@ export async function firebaseAuth() {
     }
     return null;
   } finally {
-    closeOffscreenDocument();
+    await closeOffscreenDocument();
   }
 }
