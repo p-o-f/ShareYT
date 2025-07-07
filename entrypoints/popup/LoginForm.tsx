@@ -2,6 +2,12 @@ import { useAuth } from './AuthContext';
 import { messaging } from '../../utils/messaging';
 import { useState } from 'react';
 
+export const userInfo = {
+  // for use in dashboard.html and other contexts
+  displayName: '',
+  profilePicture: '',
+};
+
 export default function LoginForm() {
   const { user, loginWithGoogle, logout, loading } = useAuth();
   const [summary, setSummary] = useState<string | null>(null);
@@ -14,6 +20,11 @@ export default function LoginForm() {
     const result = await messaging.sendMessage('summarize:video');
     setSummary(result);
   };
+
+  if (user) {
+    userInfo.displayName = user.displayName || user.email || 'User';
+    userInfo.profilePicture = user.photoURL || '';
+  }
 
   return (
     <div
