@@ -16,29 +16,72 @@ export default function LoginForm() {
   };
 
   return (
-    <div>
-      {user && <div>Hi, {user.displayName || user.email || 'User'}!</div>}
-      {!user && <button onClick={loginWithGoogle}>Sign In</button>}
-      {user && <button onClick={logout}>Sign Out</button>}
+    <div
+      style={{
+        padding: '1rem',
+        minWidth: '250px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '1rem',
+        fontFamily: 'sans-serif',
+      }}
+    >
+      <h2 style={{ margin: 0 }}>ShareYT</h2>
+
       {user && (
-        <button
-          onClick={() => {
-            const url = browser.runtime.getURL('/dashboard.html');
-            window.open(url, '_blank');
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
           }}
         >
-          View Dashboard
+          {user.photoURL && (
+            <img
+              src={user.photoURL}
+              alt="Profile"
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '50%',
+                objectFit: 'cover',
+              }}
+            />
+          )}
+          <span>Hi, {user.displayName || user.email || 'User'}!</span>
+        </div>
+      )}
+
+      {!user && (
+        <button style={{ width: '100%' }} onClick={loginWithGoogle}>
+          Sign In
         </button>
       )}
       {user && (
-        <button onClick={handleSummarize}>
-          Summarize (see console for output)
-        </button>
+        <>
+          <button style={{ width: '100%' }} onClick={logout}>
+            Sign Out
+          </button>
+          <button
+            style={{ width: '100%' }}
+            onClick={() => {
+              const url = browser.runtime.getURL('/dashboard.html');
+              window.open(url, '_blank');
+            }}
+          >
+            View Your Dashboard
+          </button>
+          <button style={{ width: '100%' }} onClick={handleSummarize}>
+            Summarize (in progress)
+          </button>
+        </>
       )}
+
       {summary && (
-        <div>
-          <h3>Summary:</h3>
-          <p>{summary}</p>
+        <div style={{ width: '100%' }}>
+          <h3 style={{ marginBottom: '0.5rem' }}>Summary:</h3>
+          <p style={{ fontSize: '0.9rem' }}>{summary}</p>
         </div>
       )}
     </div>
