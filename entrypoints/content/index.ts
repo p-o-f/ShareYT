@@ -13,7 +13,7 @@ export default defineContentScript({
       const button = document.createElement('div');
       button.id = 'log-title-button';
       button.className = 'ytp-button'; // Used to align with YT's other control buttons
-      button.title = 'Click to log the video title to the console'; // Tooltip text
+      button.title = 'Click to log video details to the console'; // Tooltip text
       button.style.display = 'inline-flex';
       button.style.alignItems = 'center';
       button.textContent = '📝'; // Cleaner w/ big emoji and no text to match other icons
@@ -29,28 +29,40 @@ export default defineContentScript({
         button.style.opacity = '1';
       };
 
-      // Logic intended when button is clicked
+      // Logic intended for when button is clicked
       button.onclick = () => {
         const title = document.title;
         const url = window.location.href;
 
-        // Try to find the channel name (usually in the metadata section)
+        // Try to find the channel name element (usually in the metadata section)
         const channelEl =
           document.querySelector('#owner-name a') ||
           document.querySelector('ytd-channel-name a');
         const channelName = channelEl?.textContent?.trim() || 'Unknown Channel';
 
-        // Try to find subscriber count
+        // Try to find subscriber count element
         const subsEl =
           document.querySelector('#owner-sub-count') ||
           document.querySelector('yt-formatted-string#subscriber-count');
         const subscriberCount =
           subsEl?.textContent?.trim() || 'Subscriber count unavailable';
 
+        const getVideoIdFromUrl = (url: string) => {
+          const match =
+            url.match(/[?&]v=([^&]+)/) || url.match(/youtu\.be\/([^?&]+)/);
+          return match ? match[1] : null;
+        };
+
+        const videoId = getVideoIdFromUrl(url); // https://www.youtube.com/watch?v=_B-W2wZCwhY <-- As an example, videoId is _B-W2wZCwhY
+        const thumbnailUrl = videoId
+          ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
+          : 'Thumbnail unavailable';
+
         console.log(`Video title: ${title}`);
         console.log(`URL: ${url}`);
         console.log(`Channel: ${channelName}`);
         console.log(`Subscribers: ${subscriberCount}`);
+        console.log(`Thumbnail URL: ${thumbnailUrl}`);
       };
 
       // Add button to the left controls bar
