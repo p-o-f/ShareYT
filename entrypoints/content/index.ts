@@ -1,6 +1,7 @@
 export default defineContentScript({
   matches: ['*://*.youtube.com/*'],
   runAt: 'document_idle',
+  allFrames: true, // For YT vids in iframes
   main(_ctx) {
     console.log('YouTube site/video detected');
 
@@ -34,13 +35,13 @@ export default defineContentScript({
         const title = document.title;
         const url = window.location.href;
 
-        // Try to find the channel name element (usually in the metadata section)
+        // Try to find the channel name element (usually in the metadata section; doesn't work for iframes rn)
         const channelEl =
           document.querySelector('#owner-name a') ||
           document.querySelector('ytd-channel-name a');
         const channelName = channelEl?.textContent?.trim() || 'Unknown Channel';
 
-        // Try to find subscriber count element
+        // Try to find subscriber count element (doesn't work for iframes rn)
         const subsEl =
           document.querySelector('#owner-sub-count') ||
           document.querySelector('yt-formatted-string#subscriber-count');
@@ -48,8 +49,11 @@ export default defineContentScript({
           subsEl?.textContent?.trim() || 'Subscriber count unavailable';
 
         const getVideoIdFromUrl = (url: string) => {
+          // Supports both normal YT and iframe URLs
           const match =
-            url.match(/[?&]v=([^&]+)/) || url.match(/youtu\.be\/([^?&]+)/);
+            url.match(/[?&]v=([^&]+)/) ||
+            url.match(/youtu\.be\/([^?&]+)/) ||
+            url.match(/\/embed\/([^?/?&]+)/);
           return match ? match[1] : null;
         };
 
