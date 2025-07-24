@@ -4,11 +4,17 @@ export default defineContentScript({
   allFrames: true, // For YT vids in iframes
   main(_ctx) {
     console.log('YouTube site/video detected');
-
-    const injectButton = () => {
+    console.log(
+      'Status of user login:',
+      browser.storage.sync.get('isLoggedIn') || false,
+    );
+    // TODO only do inject button if user is logged in
+    // TODO uninject button when user signs out via polling for sign in status every 0.5sec or so, perhaps theres a better way but this will work for now
+    const injectButton = (): boolean => {
       const controls = document.querySelector('.ytp-left-controls'); // This will be right indented if "video chapters" are enabled for the video, otherwise left indented
       // If controls are not found or the button already exists, exit early
-      if (!controls || controls.querySelector('#log-title-button')) return;
+      if (!controls || controls.querySelector('#log-title-button'))
+        return false;
 
       // Create button container that matches YT's button style
       const button = document.createElement('div');
@@ -71,6 +77,7 @@ export default defineContentScript({
 
       // Add button to the left controls bar
       controls.appendChild(button);
+      return true;
     };
 
     const waitForControls = () => {
@@ -83,9 +90,36 @@ export default defineContentScript({
         subtree: true,
       });
 
-      setInterval(injectButton, 1000); // Fallback in case MutationObserver misses something, needs to be polished later like polling loop or something
+      const intervalId = setInterval(() => {
+        if (injectButton()) {
+          clearInterval(intervalId); // Stop polling once inserted, otherwise poll every second
+        }
+      }, 1000);
+    };
+
+    // Start logging current playback time every 10 seconds, and get total duration once (since it doesn't change)
+    const startLoggingTimeOnceReady = () => {
+      const checkReady = setInterval(() => {
+        const currentTimeEl = document.querySelector('.ytp-time-current');
+        const durationTimeEl = document.querySelector('.ytp-time-duration');
+
+        if (currentTimeEl && durationTimeEl) {
+          clearInterval(checkReady); // Stop polling once ready
+
+          console.log(
+            'Video timer elements found (user is watching video), starting time logger every 10 seconds...',
+          );
+
+          setInterval(() => {
+            const current = currentTimeEl.textContent?.trim() || 'N/A';
+            const duration = durationTimeEl.textContent?.trim() || 'N/A'; // we need to constantly get this rather than 1x because if the video changes (i.e. the user clicks like a new vid from the one they were previously watching), it'll remain stuck like from the first video
+            console.log(`Current Time: ${current} / Duration: ${duration}`);
+          }, 10000); // Runs every 10 seconds
+        }
+      }, 1000); // Check every second until video player is ready
     };
 
     waitForControls();
+    startLoggingTimeOnceReady();
   },
 });

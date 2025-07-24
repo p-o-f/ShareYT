@@ -58,6 +58,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     await messaging.sendMessage('auth:signOut');
     setCurrentUser(null);
+    browser.storage.sync.set({ isLoggedIn: false }); // needed for index.ts content script to check if it's logged in, kinda like a zepp settingsstorage or whatever type thing where this is shared storage
   };
 
   const value: AuthContextType = {
