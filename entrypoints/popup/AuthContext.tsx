@@ -47,15 +47,22 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginWithGoogle = async () => {
     if (isFirefoxExtension()) {
-      console.log('Performing Firefox Google login (AuthContext.tsx)');
+      console.log(
+        "Performing Firefox Google login (AuthContext.tsx), aka await messaging.sendMessage('auth:signInFirefox');",
+      );
       await messaging.sendMessage('auth:signInFirefox');
     } else {
-      console.log('Performing Chrome Google login (AuthContext.tsx)');
+      console.log(
+        "Performing Chrome Google login (AuthContext.tsx), aka await messaging.sendMessage('auth:signIn');",
+      );
       await messaging.sendMessage('auth:signIn');
     }
   };
 
   const logout = async () => {
+    console.log(
+      "Performing Google logout (AuthContext.tsx), aka await messaging.sendMessage('auth:signOut');",
+    );
     await messaging.sendMessage('auth:signOut');
     setCurrentUser(null);
     browser.storage.sync.set({ isLoggedIn: false }); // needed for index.ts content script to check if it's logged in, kinda like a zepp settingsstorage or whatever type thing where this is shared storage
