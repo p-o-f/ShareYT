@@ -2,14 +2,6 @@ import { useAuth } from './AuthContext';
 import { messaging } from '../../utils/messaging';
 import { useState } from 'react';
 
-export const userInfo = {
-  // for use in dashboard.html and other contexts
-  isLoggedIn: false,
-  email: '',
-  displayName: '',
-  profilePicture: '',
-};
-
 export default function LoginForm() {
   const { user, loginWithGoogle, logout, loading } = useAuth();
   const [summary, setSummary] = useState<string | null>(null);
@@ -22,14 +14,6 @@ export default function LoginForm() {
     const result = await messaging.sendMessage('summarize:video');
     setSummary(result);
   };
-
-  if (user) {
-    userInfo.isLoggedIn = true;
-    userInfo.email = user.email || '';
-    userInfo.displayName = user.displayName || user.email || '';
-    userInfo.profilePicture = user.photoURL || '';
-    browser.storage.sync.set({ isLoggedIn: true }); // needed for index.ts content script to check if it's logged in, kinda like a zepp settingsstorage or whatever type thing where this is shared storage
-  }
 
   return (
     <div

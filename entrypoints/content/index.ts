@@ -4,10 +4,7 @@ export default defineContentScript({
   allFrames: true, // For YT vids in iframes
   main(_ctx) {
     console.log('YouTube site/video detected');
-    console.log(
-      'Status of user login:',
-      browser.storage.sync.get('isLoggedIn') || false,
-    );
+    console.log('Status of user login:', storage.getItem('sync:isLoggedIn'));
     // TODO only do inject button if user is logged in
     // TODO uninject button when user signs out via polling for sign in status every 0.5sec or so, perhaps theres a better way but this will work for now
     const injectButton = (): boolean => {
