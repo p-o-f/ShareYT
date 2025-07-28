@@ -1,12 +1,44 @@
+import { SerializedUser } from '@/types/types';
+
 export default defineContentScript({
-  matches: ['*://*.youtube.com/*'],
+  matches: ['*://*.youtube.com/*'], // TODO handle YT shorts format later
   runAt: 'document_idle',
   allFrames: true, // For YT vids in iframes
-  main(_ctx) {
+  async main(_ctx) {
     console.log('YouTube site/video detected');
-    console.log('Status of user login:', storage.getItem('sync:isLoggedIn'));
-    // TODO only do inject button if user is logged in
-    // TODO uninject button when user signs out via polling for sign in status every 0.5sec or so, perhaps theres a better way but this will work for now
+
+    let uid = null;
+    let email = null;
+    let displayName = null;
+    let photoURL = null;
+
+    const userIsLoggedIn = async (): Promise<boolean> => {
+      const user = await storage.getItem<SerializedUser>('local:user');
+      if (user) {
+        console.log('User is logged in');
+        uid = user.uid;
+        email = user.email;
+        displayName = user.displayName;
+        photoURL = user.photoURL;
+        return true;
+      }
+      uid = null;
+      email = null;
+      displayName = null;
+      photoURL = null;
+      console.log('User is not logged in');
+      return false;
+    };
+
+    const removeButton = (): boolean => {
+      const button = document.querySelector('#log-title-button');
+      if (button) {
+        button.remove();
+        return true;
+      }
+      return false;
+    };
+
     const injectButton = (): boolean => {
       const controls = document.querySelector('.ytp-left-controls'); // This will be right indented if "video chapters" are enabled for the video, otherwise left indented
       // If controls are not found or the button already exists, exit early
@@ -116,7 +148,39 @@ export default defineContentScript({
       }, 1000); // Check every second until video player is ready
     };
 
-    waitForControls();
-    startLoggingTimeOnceReady();
+    let hasStartedLogging = false;
+
+    const injectAndMaintainButton = () => {
+      const intervalId = setInterval(() => {
+        userIsLoggedIn()
+          .then((isLoggedIn) => {
+            if (!isLoggedIn) {
+              removeButton();
+              return;
+            }
+
+            const alreadyInjected = document.querySelector('#log-title-button');
+            if (alreadyInjected) return; // Exit early if button exists
+
+            // Try to inject. If it fails (e.g., controls not present), don't start timers.
+            const injected = injectButton();
+            if (!injected) return;
+
+            console.log('Button injected for logged-in user.');
+
+            // Start logging only once
+            if (!hasStartedLogging) {
+              hasStartedLogging = true;
+              startLoggingTimeOnceReady();
+            }
+          })
+          .catch((err) => {
+            console.error('Error in injectAndMaintainButton:', err);
+            removeButton();
+          });
+      }, 1000); // Every second
+    };
+
+    injectAndMaintainButton();
   },
 });
