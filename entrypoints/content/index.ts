@@ -1,4 +1,5 @@
 import { SerializedUser } from '@/types/types';
+import { clean } from 'wxt';
 
 export default defineContentScript({
   matches: ['*://*.youtube.com/*'], // TODO handle YT shorts format later
@@ -6,38 +7,13 @@ export default defineContentScript({
   allFrames: true, // For YT vids in iframes
   async main(_ctx) {
     console.log('YouTube site/video detected');
+    let isLoggedIn = false;
 
-    let uid = null;
-    let email = null;
-    let displayName = null;
-    let photoURL = null;
-
-    const userIsLoggedIn = async (): Promise<boolean> => {
-      const user = await storage.getItem<SerializedUser>('local:user');
-      if (user) {
-        console.log('User is logged in');
-        uid = user.uid;
-        email = user.email;
-        displayName = user.displayName;
-        photoURL = user.photoURL;
-        return true;
-      }
-      uid = null;
-      email = null;
-      displayName = null;
-      photoURL = null;
-      console.log('User is not logged in');
-      return false;
-    };
-
-    const removeButton = (): boolean => {
-      const button = document.querySelector('#log-title-button');
-      if (button) {
-        button.remove();
-        return true;
-      }
-      return false;
-    };
+    // Keep track of observer and intervals so we can clear them on logout
+    let controlsObserver: MutationObserver | null = null;
+    let controlsIntervalId: ReturnType<typeof setTimeout> | null = null;
+    let timeLoggerIntervalId: ReturnType<typeof setTimeout> | null = null;
+    let timeLoggerReadyCheckerId: ReturnType<typeof setTimeout> | null = null;
 
     const injectButton = (): boolean => {
       const controls = document.querySelector('.ytp-left-controls'); // This will be right indented if "video chapters" are enabled for the video, otherwise left indented
@@ -96,12 +72,13 @@ export default defineContentScript({
         const thumbnailUrl = videoId
           ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
           : 'Thumbnail unavailable';
-
+        console.log('--------------------------------------------------');
         console.log(`Video title: ${title}`);
         console.log(`URL: ${url}`);
         console.log(`Channel: ${channelName}`);
         console.log(`Subscribers: ${subscriberCount}`);
         console.log(`Thumbnail URL: ${thumbnailUrl}`);
+        console.log('--------------------------------------------------');
       };
 
       // Add button to the left controls bar
@@ -109,37 +86,56 @@ export default defineContentScript({
       return true;
     };
 
+    const removeButton = (): boolean => {
+      const button = document.querySelector('#log-title-button');
+      if (button) {
+        button.remove();
+        return true;
+      }
+      return false;
+    };
+
     const waitForControls = () => {
-      const observer = new MutationObserver(() => {
-        injectButton();
+      if (controlsObserver) controlsObserver.disconnect(); // Prevent duplicates
+      controlsObserver = new MutationObserver(() => {
+        if (isLoggedIn) injectButton();
       });
 
-      observer.observe(document.body, {
+      controlsObserver.observe(document.body, {
         childList: true,
         subtree: true,
       });
 
-      const intervalId = setInterval(() => {
-        if (injectButton()) {
-          clearInterval(intervalId); // Stop polling once inserted, otherwise poll every second
+      controlsIntervalId = setInterval(() => {
+        if (!isLoggedIn) return; // Skip if user logged out
+        if (injectButton() && controlsIntervalId) {
+          clearInterval(controlsIntervalId); // Stop polling once inserted
+          controlsIntervalId = null;
         }
       }, 1000);
     };
 
     // Start logging current playback time every 10 seconds, and get total duration once (since it doesn't change)
     const startLoggingTimeOnceReady = () => {
-      const checkReady = setInterval(() => {
+      if (timeLoggerReadyCheckerId) clearInterval(timeLoggerReadyCheckerId);
+
+      timeLoggerReadyCheckerId = setInterval(() => {
+        if (!isLoggedIn) return;
+
         const currentTimeEl = document.querySelector('.ytp-time-current');
         const durationTimeEl = document.querySelector('.ytp-time-duration');
 
         if (currentTimeEl && durationTimeEl) {
-          clearInterval(checkReady); // Stop polling once ready
+          clearInterval(timeLoggerReadyCheckerId!);
+          timeLoggerReadyCheckerId = null;
 
           console.log(
             'Video timer elements found (user is watching video), starting time logger every 10 seconds...',
           );
 
-          setInterval(() => {
+          timeLoggerIntervalId = setInterval(() => {
+            if (!isLoggedIn) return;
+
             const current = currentTimeEl.textContent?.trim() || 'N/A';
             const duration = durationTimeEl.textContent?.trim() || 'N/A'; // we need to constantly get this rather than 1x because if the video changes (i.e. the user clicks like a new vid from the one they were previously watching), it'll remain stuck like from the first video
             console.log(`Current Time: ${current} / Duration: ${duration}`);
@@ -148,39 +144,78 @@ export default defineContentScript({
       }, 1000); // Check every second until video player is ready
     };
 
-    let hasStartedLogging = false;
+    const cleanUpState = () => {
+      const removeButtonStatus = removeButton();
+      console.log('removeButtonStatus:', removeButtonStatus);
 
-    const injectAndMaintainButton = () => {
-      const intervalId = setInterval(() => {
-        userIsLoggedIn()
-          .then((isLoggedIn) => {
-            if (!isLoggedIn) {
-              removeButton();
-              return;
-            }
-
-            const alreadyInjected = document.querySelector('#log-title-button');
-            if (alreadyInjected) return; // Exit early if button exists
-
-            // Try to inject. If it fails (e.g., controls not present), don't start timers.
-            const injected = injectButton();
-            if (!injected) return;
-
-            console.log('Button injected for logged-in user.');
-
-            // Start logging only once
-            if (!hasStartedLogging) {
-              hasStartedLogging = true;
-              startLoggingTimeOnceReady();
-            }
-          })
-          .catch((err) => {
-            console.error('Error in injectAndMaintainButton:', err);
-            removeButton();
-          });
-      }, 1000); // Every second
+      // Clean up observers and intervals
+      if (controlsObserver) {
+        controlsObserver.disconnect();
+        controlsObserver = null;
+      }
+      if (controlsIntervalId) {
+        clearInterval(controlsIntervalId);
+        controlsIntervalId = null;
+      }
+      if (timeLoggerReadyCheckerId) {
+        clearInterval(timeLoggerReadyCheckerId);
+        timeLoggerReadyCheckerId = null;
+      }
+      if (timeLoggerIntervalId) {
+        clearInterval(timeLoggerIntervalId);
+        timeLoggerIntervalId = null;
+      }
     };
 
-    injectAndMaintainButton();
+    console.log(
+      "In contentscript (index.ts), watching storage for 'local:user' changes...",
+    );
+
+    storage.watch<SerializedUser>('local:user', (currentUser, previousUser) => {
+      console.log('User loginStatus changed:', { currentUser, previousUser });
+
+      if (!currentUser && previousUser) {
+        // User was previously logged in, now they are logged out
+        isLoggedIn = false;
+        console.log('isLoggedin status after logout:', isLoggedIn);
+        cleanUpState();
+
+        console.log(
+          'All observers and intervals were cleared due to user logout',
+        );
+      } else {
+        // User was previously logged out, now they are logged in
+        isLoggedIn = true;
+        console.log('isLoggedin status after login:', isLoggedIn);
+        waitForControls();
+        startLoggingTimeOnceReady();
+      }
+    });
+
+    let lastUrl = window.location.href;
+    let navigationTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    // Check for YouTube SPA (Single Page Application) navigation every second
+    setInterval(() => {
+      const currentUrl = window.location.href;
+      if (currentUrl !== lastUrl && isLoggedIn) {
+        console.log('Detected SPA navigation:', {
+          from: lastUrl,
+          to: currentUrl,
+        });
+        lastUrl = currentUrl;
+
+        // Debounce re-inits in case multiple changes happen quickly
+        if (navigationTimeout) clearTimeout(navigationTimeout);
+        navigationTimeout = setTimeout(() => {
+          // Clean up old state
+          cleanUpState();
+
+          console.log('Re-initializing after navigation...');
+          waitForControls();
+          startLoggingTimeOnceReady();
+        }, 500); // Debounce: wait 0.5s after navigation
+      }
+    }, 1000); // Poll every 1 second
   },
 });
