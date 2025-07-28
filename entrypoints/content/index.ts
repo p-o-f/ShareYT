@@ -212,8 +212,11 @@ export default defineContentScript({
           cleanUpState();
 
           console.log('Re-initializing after navigation...');
-          waitForControls();
-          startLoggingTimeOnceReady();
+          if (currentUrl != 'https://www.youtube.com/') {
+            // TODO this needs to be more robust later
+            waitForControls();
+            startLoggingTimeOnceReady();
+          }
         }, 500); // Debounce: wait 0.5s after navigation
       }
     }, 1000); // Poll every 1 second
