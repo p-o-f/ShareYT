@@ -16,7 +16,8 @@ export default defineContentScript({
     let timeLoggerReadyCheckerId: ReturnType<typeof setTimeout> | null = null;
 
     const injectButton = (): boolean => {
-      const controls = document.querySelector('.ytp-left-controls'); // This will be right indented if "video chapters" are enabled for the video, otherwise left indented
+      const controls = document.querySelector('.ytp-left-controls');
+      // This will be right indented if "video chapters" are enabled for the video, otherwise left indented; TODO hardstick the indentation
       // If controls are not found or the button already exists, exit early
       if (!controls || controls.querySelector('#log-title-button'))
         return false;
@@ -41,7 +42,7 @@ export default defineContentScript({
         button.style.opacity = '1';
       };
 
-      // Logic intended for when button is clicked
+      // Logic for when button is clicked
       button.onclick = () => {
         const title = document.title;
         const url = window.location.href;
@@ -86,8 +87,8 @@ export default defineContentScript({
       return true;
     };
 
-    const removeButton = (): boolean => {
-      const button = document.querySelector('#log-title-button');
+    const removeButton = (buttonName: string): boolean => {
+      const button = document.querySelector(buttonName);
       if (button) {
         button.remove();
         return true;
@@ -145,7 +146,7 @@ export default defineContentScript({
     };
 
     const cleanUpState = () => {
-      const removeButtonStatus = removeButton();
+      const removeButtonStatus = removeButton('#log-title-button');
       console.log('removeButtonStatus:', removeButtonStatus);
 
       // Clean up observers and intervals
@@ -217,7 +218,7 @@ export default defineContentScript({
             waitForControls();
             startLoggingTimeOnceReady();
           }
-        }, 500); // Debounce: wait 0.5s after navigation
+        }, 300); // Debounce: wait 0.3s after navigation
       }
     }, 1000); // Poll every 1 second
   },
