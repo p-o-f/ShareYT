@@ -2,10 +2,192 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Dashboard</title>
+    <title>Your ShareYT Dashboard</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f5f7fa;
+        color: #333;
+      }
+
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 2rem;
+        background-color: #eef2fb;
+        border-bottom: 1px solid #ccc;
+      }
+
+      .logo {
+        font-weight: bold;
+        font-size: 1.2rem;
+        color: #3b4cca;
+      }
+
+      .profile {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .profile img {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+      }
+
+      main {
+        max-width: 900px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+      }
+
+      .greeting {
+        text-align: center;
+        margin-bottom: 2rem;
+      }
+
+      .greeting h2 {
+        margin: 0;
+      }
+
+      .share-button {
+        background-color: #ff9800;
+        border: none;
+        color: white;
+        padding: 0.75rem 1.5rem;
+        font-size: 1rem;
+        border-radius: 5px;
+        cursor: pointer;
+        margin-top: 1rem;
+      }
+
+      section {
+        margin-bottom: 3rem;
+      }
+
+      .section-title {
+        font-size: 1.2rem;
+        font-weight: bold;
+        color: #3b4cca;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+      }
+
+      .video-grid {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+      }
+
+      .video-card {
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        width: 300px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .video-thumbnail {
+        width: 100%;
+        height: 180px;
+        background-color: #ccc;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #777;
+        font-size: 1.2rem;
+      }
+
+      .video-info {
+        padding: 1rem;
+        font-size: 0.9rem;
+      }
+
+      .video-info small {
+        color: #666;
+      }
+
+      footer {
+        text-align: center;
+        padding: 1rem;
+        font-size: 0.8rem;
+        color: #999;
+      }
+    </style>
   </head>
   <body>
-    <h1>Dashboard</h1>
-    <p>What is this dashboard: Welcome to your dashboard!</p>
+    <header>
+      <div class="logo">ShareYT</div>
+      <div class="profile">
+        <img src="https://via.placeholder.com/32" alt="Profile Picture" />
+        <span>Aydin Sample</span>
+      </div>
+    </header>
+
+    <main>
+      <div class="greeting">
+        <h2>Hello, <strong>Aydin Sample</strong>!</h2>
+        <p>
+          Share some interesting videos or catch up on what your friends sent
+          you!
+        </p>
+        <button class="share-button">Share Current Video (Mock)</button>
+      </div>
+
+      <section>
+        <div class="section-title">📈 Videos Shared With You</div>
+        <div class="video-grid">
+          <div class="video-card">
+            <div class="video-thumbnail">320 × 180</div>
+            <div class="video-info">
+              <strong>Focus Music for Coding</strong><br />
+              <small>Shared by Aydin Mock · 1 day ago</small><br />
+              <input type="checkbox" /> Mark as Watched
+              <span style="float: right; color: #3b4cca; cursor: pointer"
+                >Watch</span
+              >
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="section-title">📈 Videos You've Shared</div>
+        <div class="video-grid">
+          <div class="video-card">
+            <div class="video-thumbnail">320 × 180</div>
+            <div class="video-info">
+              <strong>Never Gonna Give You Up</strong><br />
+              <small>Shared with Aydin Mock · 2 days ago</small><br />
+              Not yet watched
+              <span style="float: right; color: #3b4cca; cursor: pointer"
+                >Watch</span
+              >
+            </div>
+          </div>
+
+          <div class="video-card">
+            <div class="video-thumbnail">320 × 180</div>
+            <div class="video-info">
+              <strong>Relaxing Nature Sounds</strong><br />
+              <small>Shared with Willow Test · about 1 hour ago</small><br />
+              Not yet watched
+              <span style="float: right; color: #3b4cca; cursor: pointer"
+                >Watch</span
+              >
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>ShareYT – video sharing made simple</footer>
   </body>
 </html>

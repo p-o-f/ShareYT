@@ -47,16 +47,24 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginWithGoogle = async () => {
     if (isFirefoxExtension()) {
-      console.log('Performing Firefox Google login (AuthContext.tsx)');
+      console.log(
+        "Performing Firefox Google login (AuthContext.tsx), aka await messaging.sendMessage('auth:signInFirefox');",
+      );
       await messaging.sendMessage('auth:signInFirefox');
     } else {
-      console.log('Performing Chrome Google login (AuthContext.tsx)');
+      console.log(
+        "Performing Chrome Google login (AuthContext.tsx), aka await messaging.sendMessage('auth:signIn');",
+      );
       await messaging.sendMessage('auth:signIn');
     }
   };
 
   const logout = async () => {
+    console.log(
+      "Performing Google logout (AuthContext.tsx), aka await messaging.sendMessage('auth:signOut');",
+    );
     await messaging.sendMessage('auth:signOut');
+
     setCurrentUser(null);
   };
 

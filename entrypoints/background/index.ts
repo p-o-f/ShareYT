@@ -91,6 +91,8 @@ export default defineBackground(() => {
 
   messaging.onMessage('auth:signOut', async () => {
     // Let onAuthStateChanged handle null broadcast (TODO: verify this)
+    await storage.removeItem('local:user');
+    messaging.sendMessage('auth:stateChanged');
     await signOut(auth);
   });
 
