@@ -34,3 +34,8 @@ export function isFirebaseUser(user: any): user is User {
     Array.isArray(user.providerData)
   );
 }
+
+// Key for the reccomendation
+export function generateUUID() {
+  return crypto.randomUUID(); // Available in modern browsers
+}

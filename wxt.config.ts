@@ -21,7 +21,7 @@ export default defineConfig({
       web_accessible_resources: [
         // needed for the dashboard.html to be accessible from any web page or content script
         {
-          resources: ['dashboard.html'],
+          resources: ['dashboard.html', 'dashboard-script.js'],
           matches: ['<all_urls>'], // todo make URLs more specific for security probably - just need this so content scripts can access the dashboard
         },
       ],

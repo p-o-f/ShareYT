@@ -143,51 +143,58 @@
 
       <section>
         <div class="section-title">📈 Videos Shared With You</div>
-        <div class="video-grid">
-          <div class="video-card">
-            <div class="video-thumbnail">320 × 180</div>
-            <div class="video-info">
-              <strong>Focus Music for Coding</strong><br />
-              <small>Shared by Aydin Mock · 1 day ago</small><br />
-              <input type="checkbox" /> Mark as Watched
-              <span style="float: right; color: #3b4cca; cursor: pointer"
-                >Watch</span
-              >
-            </div>
-          </div>
+        <div class="video-grid" share-type="receiver">
+          <!-- <div class="video-card"> -->
+          <!--   <div class="video-thumbnail">320 × 180</div> -->
+          <!--   <div class="video-info"> -->
+          <!--     <strong>Focus Music for Coding</strong><br /> -->
+          <!--     <small>Shared by Aydin Mock · 1 day ago</small><br /> -->
+          <!--     <input type="checkbox" /> Mark as Watched -->
+          <!--     <span style="float: right; color: #3b4cca; cursor: pointer" -->
+          <!--       >Watch</span -->
+          <!--     > -->
+          <!--   </div> -->
+          <!-- </div> -->
         </div>
       </section>
 
       <section>
         <div class="section-title">📈 Videos You've Shared</div>
-        <div class="video-grid">
-          <div class="video-card">
-            <div class="video-thumbnail">320 × 180</div>
-            <div class="video-info">
-              <strong>Never Gonna Give You Up</strong><br />
-              <small>Shared with Aydin Mock · 2 days ago</small><br />
-              Not yet watched
-              <span style="float: right; color: #3b4cca; cursor: pointer"
-                >Watch</span
-              >
-            </div>
-          </div>
-
-          <div class="video-card">
-            <div class="video-thumbnail">320 × 180</div>
-            <div class="video-info">
-              <strong>Relaxing Nature Sounds</strong><br />
-              <small>Shared with Willow Test · about 1 hour ago</small><br />
-              Not yet watched
-              <span style="float: right; color: #3b4cca; cursor: pointer"
-                >Watch</span
-              >
-            </div>
-          </div>
+        <div class="video-grid" share-type="sender">
+          <!-- <div class="video-card"> -->
+          <!--   <div class="video-thumbnail">320 × 180</div> -->
+          <!--   <div class="video-info"> -->
+          <!--     <strong>Never Gonna Give You Up</strong><br /> -->
+          <!--     <small>Shared with Aydin Mock · 2 days ago</small><br /> -->
+          <!--     Not yet watched -->
+          <!--     <span style="float: right; color: #3b4cca; cursor: pointer" -->
+          <!--       >Watch</span -->
+          <!--     > -->
+          <!--   </div> -->
+          <!-- </div> -->
+          <!---->
+          <!-- <div class="video-card"> -->
+          <!--   <div class="video-thumbnail">320 × 180</div> -->
+          <!--   <div class="video-info"> -->
+          <!--     <strong>Relaxing Nature Sounds</strong><br /> -->
+          <!--     <small>Shared with Willow Test · about 1 hour ago</small><br /> -->
+          <!--     Not yet watched -->
+          <!--     <span style="float: right; color: #3b4cca; cursor: pointer" -->
+          <!--       >Watch</span -->
+          <!--     > -->
+          <!--   </div> -->
+          <!-- </div> -->
         </div>
       </section>
     </main>
 
     <footer>ShareYT – video sharing made simple</footer>
+
+    <script type="module">
+      const script = document.createElement('script');
+      script.type = 'module';
+      script.src = chrome.runtime.getURL('/dashboard-script.js');
+      document.body.appendChild(script);
+    </script>
   </body>
 </html>
