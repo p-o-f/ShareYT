@@ -287,6 +287,7 @@ export default defineContentScript({
             const current = currentTimeEl.textContent?.trim() || 'N/A';
             const duration = durationTimeEl.textContent?.trim() || 'N/A'; // we need to constantly get this rather than 1x because if the video changes (i.e. the user clicks like a new vid from the one they were previously watching), it'll remain stuck like from the first video
             if (current === duration && duration === 'N/A') {
+              // some weird invalid case where we need to exit
               cleanUpState();
               return;
             }
@@ -321,14 +322,17 @@ export default defineContentScript({
       }
     };
     // START OF DRIVER CODE FOR MAIN: KEEPS CONTENT SCRIPT RUNNING SMOOTHLY ---------------------------------------------------------------------
+    /* This is a way to keep track of logged in state; from testing, I found that the event watcher by itself is not sufficient to do this
+    // the main problem is:
+    // -the serializedUser watcher only runs in content script, which only runs when youtube.com or any eligible websites are open
+    // -so when not logged in due to the watcher specifically (what if the user logged in from another page that ISN'T youtube?), we need to check storage
+    // -but, we don't want to check storage every time or every x amount of time (i.e. polling) because that's expensive
+    // so this is my workaround
+    */
     console.log(
       "In contentscript (index.ts), watching storage for 'local:user' changes...",
     );
-    // This is a way to keep track of logged in state; from testing, I found that the event watcher by itself is not sufficient to do this
 
-    // the main problem is...
-    // the watcher only runs in content script
-    // so when not logged in due to watcher, need to poll
     let isLoggedIn: false | true = false; //default intiialization is false
     if (!isLoggedIn) {
       const loggedInBefore = await storage.getItem<number>( // only check from storage is loggedIn isn't true in local memory of contentscript
