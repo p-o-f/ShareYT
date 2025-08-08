@@ -91,6 +91,7 @@ export default defineContentScript({
       avatar: `https://i.pravatar.cc/24?img=${i % 70}`,
     }));
 
+    //TODO fix this
     const injectShareDropdownButton = (): boolean => {
       const controls = document.querySelector('.ytp-left-controls');
       if (!controls || controls.querySelector('#share-dropdown-button'))
