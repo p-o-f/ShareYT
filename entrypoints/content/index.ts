@@ -88,7 +88,7 @@ export default defineContentScript({
     function createDropdown(anchorButton: HTMLElement) {
       const existing = document.querySelector('#custom-dropdown');
       if (existing) {
-        existing.remove(); // toggle behavior
+        existing.remove();
         document.removeEventListener('click', outsideClickHandler);
         return;
       }
@@ -136,8 +136,8 @@ export default defineContentScript({
       const container = document.createElement('div');
       container.id = 'custom-dropdown';
       container.style.position = 'absolute';
-      let offset = 285;
-      container.style.top = `${anchorButton.getBoundingClientRect().top + window.scrollY - offset}px`; // TODO fix this offset hack for more relative placement later
+      let offset = 285; // TODO fix this offset thing to have relative positioning later
+      container.style.top = `${anchorButton.getBoundingClientRect().top + window.scrollY - offset}px`;
       container.style.left = `${anchorButton.getBoundingClientRect().left + window.scrollX}px`;
       container.style.width = '250px';
       container.style.background = '#fff';
@@ -149,7 +149,7 @@ export default defineContentScript({
       container.style.fontFamily = 'Arial, sans-serif';
       container.style.display = 'flex';
       container.style.flexDirection = 'column';
-      container.style.maxHeight = '300px';
+      container.style.maxHeight = '250px'; // max height of container containing selection options
 
       // Search bar
       const search = document.createElement('input');
@@ -163,7 +163,7 @@ export default defineContentScript({
       search.style.borderRadius = '4px';
       container.appendChild(search);
 
-      // Select/Deselect toolbar
+      // Toolbar
       const toolbar = document.createElement('div');
       toolbar.style.display = 'flex';
       toolbar.style.justifyContent = 'space-between';
@@ -184,19 +184,26 @@ export default defineContentScript({
 
       selectAllWrapper.appendChild(selectAllCheckbox);
       selectAllWrapper.appendChild(selectAllLabel);
-
       toolbar.appendChild(selectAllWrapper);
-
       container.appendChild(toolbar);
 
-      // Item list wrapper with scroll
+      // Item list
       const itemList = document.createElement('div');
       itemList.style.overflowY = 'auto';
       itemList.style.flex = '1';
-      itemList.style.maxHeight = '160px'; // Scroll after ~4-6 items
+      itemList.style.maxHeight = '160px';
       container.appendChild(itemList);
 
-      // Footer confirm button
+      // No results message
+      const noResults = document.createElement('div');
+      noResults.textContent = 'No results found';
+      noResults.style.textAlign = 'center';
+      noResults.style.color = '#666';
+      noResults.style.padding = '8px';
+      noResults.style.display = 'none';
+      itemList.appendChild(noResults);
+
+      // Footer
       const footer = document.createElement('div');
       footer.style.display = 'flex';
       footer.style.justifyContent = 'flex-end';
@@ -210,58 +217,101 @@ export default defineContentScript({
       confirmBtn.style.borderRadius = '4px';
       confirmBtn.style.padding = '6px 12px';
       confirmBtn.style.cursor = 'pointer';
+      confirmBtn.disabled = true;
+      confirmBtn.style.opacity = '0.5';
 
       footer.appendChild(confirmBtn);
 
-      // Render items
+      const updateConfirmBtnState = () => {
+        const anySelected = selectedIds.size > 0;
+        confirmBtn.disabled = !anySelected;
+        confirmBtn.style.opacity = anySelected ? '1' : '0.5';
+      };
+
+      const updateSelectAllState = (visibleFiltered: typeof items) => {
+        const allVisibleSelected =
+          visibleFiltered.length > 0 &&
+          visibleFiltered.every((i) => selectedIds.has(i.id));
+        const noneVisibleSelected = visibleFiltered.every(
+          (i) => !selectedIds.has(i.id),
+        );
+
+        if (allVisibleSelected) {
+          selectAllCheckbox.checked = true;
+          selectAllCheckbox.indeterminate = false;
+        } else if (noneVisibleSelected) {
+          selectAllCheckbox.checked = false;
+          selectAllCheckbox.indeterminate = false;
+        } else {
+          selectAllCheckbox.indeterminate = true;
+        }
+      };
+
       const renderItems = (filter = '') => {
         itemList.innerHTML = ''; // clear
         const filtered = items.filter((item) =>
           item.label.toLowerCase().includes(filter.toLowerCase()),
         );
 
-        filtered.forEach((item) => {
-          const row = document.createElement('div');
-          row.style.display = 'flex';
-          row.style.alignItems = 'center';
-          row.style.marginBottom = '4px';
+        if (filtered.length === 0) {
+          noResults.style.display = 'block';
+          itemList.appendChild(noResults);
+        } else {
+          noResults.style.display = 'none';
+          filtered.forEach((item) => {
+            const row = document.createElement('div');
+            row.style.display = 'flex';
+            row.style.alignItems = 'center';
+            row.style.marginBottom = '4px';
 
-          const checkbox = document.createElement('input');
-          checkbox.type = 'checkbox';
-          checkbox.checked = selectedIds.has(item.id);
-          checkbox.id = `opt-${item.id}`;
-          checkbox.onchange = () => {
-            if (checkbox.checked) selectedIds.add(item.id);
-            else selectedIds.delete(item.id);
-          };
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.checked = selectedIds.has(item.id);
+            checkbox.id = `opt-${item.id}`;
+            checkbox.onchange = () => {
+              if (checkbox.checked) selectedIds.add(item.id);
+              else selectedIds.delete(item.id);
+              updateConfirmBtnState();
+              updateSelectAllState(filtered);
+            };
 
-          const img = document.createElement('img');
-          img.src = item.img;
-          img.alt = '';
-          img.style.width = '24px';
-          img.style.height = '24px';
-          img.style.borderRadius = '50%';
-          img.style.marginLeft = '6px';
+            const img = document.createElement('img');
+            img.src = item.img;
+            img.alt = '';
+            img.style.width = '24px';
+            img.style.height = '24px';
+            img.style.borderRadius = '50%';
+            img.style.marginLeft = '6px';
 
-          const label = document.createElement('label');
-          label.htmlFor = checkbox.id;
-          label.textContent = ` ${item.label}`;
-          label.style.marginLeft = '8px';
+            const label = document.createElement('label');
+            label.htmlFor = checkbox.id;
+            label.textContent = ` ${item.label}`;
+            label.style.marginLeft = '8px';
 
-          row.appendChild(checkbox);
-          row.appendChild(img);
-          row.appendChild(label);
-          itemList.appendChild(row);
-        });
+            row.appendChild(checkbox);
+            row.appendChild(img);
+            row.appendChild(label);
+            itemList.appendChild(row);
+          });
+        }
+
+        updateConfirmBtnState();
+        updateSelectAllState(filtered);
       };
 
-      // Handlers
+      // Now select-all only affects filtered items
       selectAllCheckbox.onchange = () => {
-        items.forEach((item) => {
-          if (selectAllCheckbox.checked) selectedIds.add(item.id);
-          else selectedIds.delete(item.id);
-        });
-        renderItems(search.value);
+        const filter = search.value;
+        const visibleItems = items.filter((item) =>
+          item.label.toLowerCase().includes(filter.toLowerCase()),
+        );
+
+        if (selectAllCheckbox.checked) {
+          visibleItems.forEach((item) => selectedIds.add(item.id));
+        } else {
+          visibleItems.forEach((item) => selectedIds.delete(item.id));
+        }
+        renderItems(filter);
       };
 
       confirmBtn.onclick = () => {
@@ -276,7 +326,6 @@ export default defineContentScript({
       container.appendChild(footer);
       document.body.appendChild(container);
 
-      // Outside click handler
       function outsideClickHandler(e: MouseEvent) {
         if (
           !container.contains(e.target as Node) &&
