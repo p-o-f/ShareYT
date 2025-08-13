@@ -89,6 +89,7 @@ export default defineContentScript({
       const existing = document.querySelector('#custom-dropdown');
       if (existing) {
         existing.remove(); // toggle behavior
+        document.removeEventListener('click', outsideClickHandler);
         return;
       }
 
@@ -97,7 +98,6 @@ export default defineContentScript({
         { id: 'dog', label: 'Dog', icon: '🐶' },
         { id: 'elephant', label: 'Elephant', icon: '🐘' },
         { id: 'monkey', label: 'Monkey', icon: '🐵' },
-        // Add as many as needed...
       ];
 
       let selectedIds = new Set<string>();
@@ -188,6 +188,20 @@ export default defineContentScript({
       renderItems();
 
       document.body.appendChild(container);
+
+      // Outside click handler
+      function outsideClickHandler(e: MouseEvent) {
+        if (
+          !container.contains(e.target as Node) &&
+          !anchorButton.contains(e.target as Node)
+        ) {
+          container.remove();
+          document.removeEventListener('click', outsideClickHandler);
+        }
+      }
+      setTimeout(() => {
+        document.addEventListener('click', outsideClickHandler);
+      }, 0); // delay to avoid closing immediately when opening
     }
 
     //TODO fix this
