@@ -85,11 +85,110 @@ export default defineContentScript({
       return true;
     };
 
-    const dropdownItems = Array.from({ length: 100 }, (_, i) => ({
-      id: i.toString(),
-      name: ['Cat', 'Dog', 'Elephant', 'Tiger', 'Panda'][i % 5] + ` ${i}`,
-      avatar: `https://i.pravatar.cc/24?img=${i % 70}`,
-    }));
+    function createDropdown(anchorButton: HTMLElement) {
+      const existing = document.querySelector('#custom-dropdown');
+      if (existing) {
+        existing.remove(); // toggle behavior
+        return;
+      }
+
+      const items = [
+        { id: 'cat', label: 'Cat', icon: '😺' },
+        { id: 'dog', label: 'Dog', icon: '🐶' },
+        { id: 'elephant', label: 'Elephant', icon: '🐘' },
+        { id: 'monkey', label: 'Monkey', icon: '🐵' },
+        // Add as many as needed...
+      ];
+
+      let selectedIds = new Set<string>();
+
+      const container = document.createElement('div');
+      container.id = 'custom-dropdown';
+      container.style.position = 'absolute';
+      container.style.top = `${anchorButton.getBoundingClientRect().bottom + window.scrollY - 215}px`;
+      container.style.left = `${anchorButton.getBoundingClientRect().left + window.scrollX}px`;
+      container.style.width = '250px';
+      container.style.maxHeight = '300px';
+      container.style.overflowY = 'auto';
+      container.style.background = '#fff';
+      container.style.border = '1px solid #ccc';
+      container.style.borderRadius = '6px';
+      container.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+      container.style.zIndex = '9999';
+      container.style.padding = '8px';
+      container.style.fontFamily = 'Arial, sans-serif';
+
+      // Search bar
+      const search = document.createElement('input');
+      search.type = 'text';
+      search.placeholder = 'Search...';
+      search.style.width = '100%';
+      search.style.padding = '6px';
+      search.style.marginBottom = '8px';
+      search.style.boxSizing = 'border-box';
+      search.style.border = '1px solid #ccc';
+      search.style.borderRadius = '4px';
+      container.appendChild(search);
+
+      // Item rendering
+      const itemList = document.createElement('div');
+      container.appendChild(itemList);
+
+      const renderItems = (filter = '') => {
+        itemList.innerHTML = ''; // clear
+        const filtered = items.filter((item) =>
+          item.label.toLowerCase().includes(filter.toLowerCase()),
+        );
+
+        // Select all
+        const selectAllWrapper = document.createElement('div');
+        const selectAllCheckbox = document.createElement('input');
+        selectAllCheckbox.type = 'checkbox';
+        selectAllCheckbox.id = 'select-all';
+        const selectAllLabel = document.createElement('label');
+        selectAllLabel.textContent = ' Select all';
+        selectAllLabel.style.marginLeft = '4px';
+
+        selectAllWrapper.appendChild(selectAllCheckbox);
+        selectAllWrapper.appendChild(selectAllLabel);
+        itemList.appendChild(selectAllWrapper);
+
+        selectAllCheckbox.onchange = () => {
+          filtered.forEach((item) => {
+            if (selectAllCheckbox.checked) selectedIds.add(item.id);
+            else selectedIds.delete(item.id);
+          });
+          renderItems(search.value); // rerender
+        };
+
+        filtered.forEach((item) => {
+          const row = document.createElement('div');
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.checked = selectedIds.has(item.id);
+          checkbox.id = `opt-${item.id}`;
+
+          checkbox.onchange = () => {
+            if (checkbox.checked) selectedIds.add(item.id);
+            else selectedIds.delete(item.id);
+          };
+
+          const label = document.createElement('label');
+          label.htmlFor = checkbox.id;
+          label.textContent = ` ${item.icon} ${item.label}`;
+          label.style.marginLeft = '4px';
+
+          row.appendChild(checkbox);
+          row.appendChild(label);
+          itemList.appendChild(row);
+        });
+      };
+
+      search.oninput = () => renderItems(search.value);
+      renderItems();
+
+      document.body.appendChild(container);
+    }
 
     //TODO fix this
     const injectShareDropdownButton = (): boolean => {
@@ -108,122 +207,18 @@ export default defineContentScript({
       button.style.userSelect = 'none';
       button.textContent = '✉️';
 
-      // Dropdown container
-      const dropdown = document.createElement('div');
-      dropdown.id = 'share-dropdown-list';
-      dropdown.style.position = 'absolute';
-      dropdown.style.top = '50px';
-      dropdown.style.left = '20px';
-      dropdown.style.zIndex = '9999';
-      dropdown.style.width = '250px';
-      dropdown.style.maxHeight = '300px';
-      dropdown.style.overflowY = 'auto';
-      dropdown.style.background = 'white';
-      dropdown.style.border = '1px solid #ccc';
-      dropdown.style.borderRadius = '4px';
-      dropdown.style.boxShadow = '0px 2px 10px rgba(0,0,0,0.15)';
-      dropdown.style.padding = '10px';
-      dropdown.style.display = 'none';
-      dropdown.style.fontSize = '14px';
-
-      // Search input
-      const search = document.createElement('input');
-      search.type = 'text';
-      search.placeholder = 'Search...';
-      search.style.width = '100%';
-      search.style.marginBottom = '10px';
-      search.style.padding = '5px';
-      dropdown.appendChild(search);
-
-      // Select all
-      const selectAllWrapper = document.createElement('div');
-      const selectAllCheckbox = document.createElement('input');
-      selectAllCheckbox.type = 'checkbox';
-      selectAllCheckbox.id = 'select-all-checkbox';
-      const selectAllLabel = document.createElement('label');
-      selectAllLabel.textContent = ' Select all';
-      selectAllWrapper.appendChild(selectAllCheckbox);
-      selectAllWrapper.appendChild(selectAllLabel);
-      dropdown.appendChild(selectAllWrapper);
-
-      // Item container
-      const itemContainer = document.createElement('div');
-      dropdown.appendChild(itemContainer);
-
-      const renderItems = (query = '') => {
-        itemContainer.innerHTML = '';
-        dropdownItems
-          .filter((item) =>
-            item.name.toLowerCase().includes(query.toLowerCase()),
-          )
-          .forEach((item) => {
-            const wrapper = document.createElement('div');
-            wrapper.style.display = 'flex';
-            wrapper.style.alignItems = 'center';
-            wrapper.style.marginBottom = '4px';
-
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.value = item.id;
-            checkbox.style.marginRight = '8px';
-
-            const img = document.createElement('img');
-            img.src = item.avatar;
-            img.style.width = '24px';
-            img.style.height = '24px';
-            img.style.borderRadius = '50%';
-            img.style.marginRight = '8px';
-
-            const label = document.createElement('span');
-            label.textContent = item.name;
-
-            wrapper.appendChild(checkbox);
-            wrapper.appendChild(img);
-            wrapper.appendChild(label);
-            itemContainer.appendChild(wrapper);
-          });
+      button.onmouseenter = () => {
+        button.style.opacity = '0.8';
+      };
+      button.onmouseleave = () => {
+        button.style.opacity = '1';
       };
 
-      renderItems();
-
-      // Select All Logic
-      selectAllCheckbox.addEventListener('change', () => {
-        const checkboxes = itemContainer.querySelectorAll(
-          'input[type="checkbox"]',
-        );
-        checkboxes.forEach(
-          (cb) =>
-            ((cb as HTMLInputElement).checked = selectAllCheckbox.checked),
-        );
-      });
-
-      // Search Filter
-      search.addEventListener('input', () => {
-        renderItems(search.value);
-      });
-
-      // Toggle dropdown
-      let dropdownOpen = false;
-      const toggleDropdown = () => {
-        dropdown.style.display = dropdownOpen ? 'none' : 'block';
-        dropdownOpen = !dropdownOpen;
+      button.onclick = () => {
+        createDropdown(button);
       };
-
-      button.onclick = (e) => {
-        e.stopPropagation(); // prevent window click from triggering close
-        toggleDropdown();
-      };
-
-      // Close dropdown on outside click
-      window.addEventListener('click', (e) => {
-        if (dropdownOpen) {
-          dropdown.style.display = 'none';
-          dropdownOpen = false;
-        }
-      });
 
       controls.appendChild(button);
-      document.body.appendChild(dropdown);
 
       return true;
     };
