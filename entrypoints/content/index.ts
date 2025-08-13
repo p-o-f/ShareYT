@@ -94,10 +94,41 @@ export default defineContentScript({
       }
 
       const items = [
-        { id: 'cat', label: 'Cat', icon: '😺' },
-        { id: 'dog', label: 'Dog', icon: '🐶' },
-        { id: 'elephant', label: 'Elephant', icon: '🐘' },
-        { id: 'monkey', label: 'Monkey', icon: '🐵' },
+        {
+          id: 'blackbear',
+          label: 'Black Bear',
+          img: 'https://placebear.com/32/32',
+        },
+        {
+          id: 'polarbear',
+          label: 'Polar Bear',
+          img: 'https://placebear.com/32/32',
+        },
+        {
+          id: 'elephant',
+          label: 'Elephant',
+          img: 'https://randomuser.me/api/portraits/women/1.jpg',
+        },
+        {
+          id: 'monkey',
+          label: 'Monkey',
+          img: 'https://randomuser.me/api/portraits/men/2.jpg',
+        },
+        {
+          id: 'parrot',
+          label: 'Parrot',
+          img: 'https://randomuser.me/api/portraits/women/3.jpg',
+        },
+        {
+          id: 'rabbit',
+          label: 'Rabbit',
+          img: 'https://randomuser.me/api/portraits/men/4.jpg',
+        },
+        {
+          id: 'snake',
+          label: 'Snake',
+          img: 'https://randomuser.me/api/portraits/women/5.jpg',
+        },
       ];
 
       let selectedIds = new Set<string>();
@@ -105,11 +136,9 @@ export default defineContentScript({
       const container = document.createElement('div');
       container.id = 'custom-dropdown';
       container.style.position = 'absolute';
-      container.style.top = `${anchorButton.getBoundingClientRect().bottom + window.scrollY - 215}px`;
+      container.style.top = `${anchorButton.getBoundingClientRect().top + window.scrollY - 275}px`; // TODO fix this 275px hack for more relative placement later
       container.style.left = `${anchorButton.getBoundingClientRect().left + window.scrollX}px`;
       container.style.width = '250px';
-      container.style.maxHeight = '300px';
-      container.style.overflowY = 'auto';
       container.style.background = '#fff';
       container.style.border = '1px solid #ccc';
       container.style.borderRadius = '6px';
@@ -117,6 +146,9 @@ export default defineContentScript({
       container.style.zIndex = '9999';
       container.style.padding = '8px';
       container.style.fontFamily = 'Arial, sans-serif';
+      container.style.display = 'flex';
+      container.style.flexDirection = 'column';
+      container.style.maxHeight = '300px';
 
       // Search bar
       const search = document.createElement('input');
@@ -130,63 +162,117 @@ export default defineContentScript({
       search.style.borderRadius = '4px';
       container.appendChild(search);
 
-      // Item rendering
+      // Select/Deselect toolbar
+      const toolbar = document.createElement('div');
+      toolbar.style.display = 'flex';
+      toolbar.style.justifyContent = 'space-between';
+      toolbar.style.alignItems = 'center';
+      toolbar.style.marginBottom = '6px';
+
+      const selectAllWrapper = document.createElement('div');
+      selectAllWrapper.style.display = 'flex';
+      selectAllWrapper.style.alignItems = 'center';
+
+      const selectAllCheckbox = document.createElement('input');
+      selectAllCheckbox.type = 'checkbox';
+      selectAllCheckbox.id = 'select-all';
+
+      const selectAllLabel = document.createElement('label');
+      selectAllLabel.textContent = ' Select all';
+      selectAllLabel.style.marginLeft = '4px';
+
+      selectAllWrapper.appendChild(selectAllCheckbox);
+      selectAllWrapper.appendChild(selectAllLabel);
+
+      toolbar.appendChild(selectAllWrapper);
+
+      container.appendChild(toolbar);
+
+      // Item list wrapper with scroll
       const itemList = document.createElement('div');
+      itemList.style.overflowY = 'auto';
+      itemList.style.flex = '1';
+      itemList.style.maxHeight = '160px'; // Scroll after ~4-6 items
       container.appendChild(itemList);
 
+      // Footer confirm button
+      const footer = document.createElement('div');
+      footer.style.display = 'flex';
+      footer.style.justifyContent = 'flex-end';
+      footer.style.marginTop = '8px';
+
+      const confirmBtn = document.createElement('button');
+      confirmBtn.textContent = 'Confirm';
+      confirmBtn.style.background = '#1a73e8';
+      confirmBtn.style.color = 'white';
+      confirmBtn.style.border = 'none';
+      confirmBtn.style.borderRadius = '4px';
+      confirmBtn.style.padding = '6px 12px';
+      confirmBtn.style.cursor = 'pointer';
+
+      footer.appendChild(confirmBtn);
+
+      // Render items
       const renderItems = (filter = '') => {
         itemList.innerHTML = ''; // clear
         const filtered = items.filter((item) =>
           item.label.toLowerCase().includes(filter.toLowerCase()),
         );
 
-        // Select all
-        const selectAllWrapper = document.createElement('div');
-        const selectAllCheckbox = document.createElement('input');
-        selectAllCheckbox.type = 'checkbox';
-        selectAllCheckbox.id = 'select-all';
-        const selectAllLabel = document.createElement('label');
-        selectAllLabel.textContent = ' Select all';
-        selectAllLabel.style.marginLeft = '4px';
-
-        selectAllWrapper.appendChild(selectAllCheckbox);
-        selectAllWrapper.appendChild(selectAllLabel);
-        itemList.appendChild(selectAllWrapper);
-
-        selectAllCheckbox.onchange = () => {
-          filtered.forEach((item) => {
-            if (selectAllCheckbox.checked) selectedIds.add(item.id);
-            else selectedIds.delete(item.id);
-          });
-          renderItems(search.value); // rerender
-        };
-
         filtered.forEach((item) => {
           const row = document.createElement('div');
+          row.style.display = 'flex';
+          row.style.alignItems = 'center';
+          row.style.marginBottom = '4px';
+
           const checkbox = document.createElement('input');
           checkbox.type = 'checkbox';
           checkbox.checked = selectedIds.has(item.id);
           checkbox.id = `opt-${item.id}`;
-
           checkbox.onchange = () => {
             if (checkbox.checked) selectedIds.add(item.id);
             else selectedIds.delete(item.id);
           };
 
+          const img = document.createElement('img');
+          img.src = item.img;
+          img.alt = '';
+          img.style.width = '24px';
+          img.style.height = '24px';
+          img.style.borderRadius = '50%';
+          img.style.marginLeft = '6px';
+
           const label = document.createElement('label');
           label.htmlFor = checkbox.id;
-          label.textContent = ` ${item.icon} ${item.label}`;
-          label.style.marginLeft = '4px';
+          label.textContent = ` ${item.label}`;
+          label.style.marginLeft = '8px';
 
           row.appendChild(checkbox);
+          row.appendChild(img);
           row.appendChild(label);
           itemList.appendChild(row);
         });
       };
 
+      // Handlers
+      selectAllCheckbox.onchange = () => {
+        items.forEach((item) => {
+          if (selectAllCheckbox.checked) selectedIds.add(item.id);
+          else selectedIds.delete(item.id);
+        });
+        renderItems(search.value);
+      };
+
+      confirmBtn.onclick = () => {
+        console.log('Selected IDs:', Array.from(selectedIds));
+        container.remove();
+        document.removeEventListener('click', outsideClickHandler);
+      };
+
       search.oninput = () => renderItems(search.value);
       renderItems();
 
+      container.appendChild(footer);
       document.body.appendChild(container);
 
       // Outside click handler
@@ -201,10 +287,9 @@ export default defineContentScript({
       }
       setTimeout(() => {
         document.addEventListener('click', outsideClickHandler);
-      }, 0); // delay to avoid closing immediately when opening
+      }, 0);
     }
 
-    //TODO fix this
     const injectShareDropdownButton = (): boolean => {
       const controls = document.querySelector('.ytp-left-controls');
       if (!controls || controls.querySelector('#share-dropdown-button'))
