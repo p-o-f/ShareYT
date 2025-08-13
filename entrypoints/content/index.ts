@@ -136,7 +136,8 @@ export default defineContentScript({
       const container = document.createElement('div');
       container.id = 'custom-dropdown';
       container.style.position = 'absolute';
-      container.style.top = `${anchorButton.getBoundingClientRect().top + window.scrollY - 275}px`; // TODO fix this 275px hack for more relative placement later
+      let offset = 285;
+      container.style.top = `${anchorButton.getBoundingClientRect().top + window.scrollY - offset}px`; // TODO fix this offset hack for more relative placement later
       container.style.left = `${anchorButton.getBoundingClientRect().left + window.scrollX}px`;
       container.style.width = '250px';
       container.style.background = '#fff';
