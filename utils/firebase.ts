@@ -3,6 +3,7 @@ import { FirebaseOptions, initializeApp } from 'firebase/app';
 import { getAuth, User } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
+import sha256 from 'js-sha256';
 
 const firebaseConfig: FirebaseOptions = {
   apiKey: 'AIzaSyD_YP_cl_lI4eCHTWzuN5_Bjiyb_Y4z7TQ',
@@ -38,4 +39,8 @@ export function isFirebaseUser(user: any): user is User {
 // Key for the reccomendation
 export function generateUUID() {
   return crypto.randomUUID(); // Available in modern browsers
+}
+
+export function hashEmail(email: string): string {
+  return sha256(email.trim().toLowerCase());
 }
