@@ -63,6 +63,8 @@ const performFirefoxGoogleLogin = async () => {
     const idToken = responseUrl.split('id_token=')[1].split('&')[0];
     const credential = GoogleAuthProvider.credential(idToken);
     const result = await signInWithCredential(auth, credential);
+
+    console.log('Immediately after auth :3 :3 :3', result);
     // onAuthStateChanged listener in the background script will handle the update
     return result;
   } catch (err) {
@@ -76,6 +78,7 @@ export default defineBackground(() => {
     // this handles the updates for performFirefoxGoogleLogin();
     // it should also handle it for chrome login, but doesn't for some reason?
     console.log('Auth state changed in background:', user?.displayName);
+    await new Promise((resolve) => setTimeout(resolve, 2000));
 
     console.log('DEEZ');
     console.log(user?.providerData); // <------------------- CAN get email here TODO TODO TODO :3 :3 :3
