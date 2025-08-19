@@ -50,7 +50,9 @@ const performFirefoxGoogleLogin = async () => {
     console.log('Redirect URI:', redirectUri);
 
     const responseUrl = await browser.identity.launchWebAuthFlow({
-      url: `https://accounts.google.com/o/oauth2/v2/auth?response_type=id_token&nonce=${nonce}&scope=openid%20profile&client_id=${oauthClientId}&redirect_uri=${redirectUri}`,
+      //url: `https://accounts.google.com/o/oauth2/v2/auth?response_type=id_token&nonce=${nonce}&scope=openid%20profile&client_id=${oauthClientId}&redirect_uri=${redirectUri}`,
+      url: `https://accounts.google.com/o/oauth2/v2/auth?response_type=id_token&nonce=${nonce}&scope=openid%20profile%20email&client_id=${oauthClientId}&redirect_uri=${redirectUri}`,
+
       interactive: true,
     });
 
@@ -74,6 +76,9 @@ export default defineBackground(() => {
     // this handles the updates for performFirefoxGoogleLogin();
     // it should also handle it for chrome login, but doesn't for some reason?
     console.log('Auth state changed in background:', user?.displayName);
+
+    console.log('DEEZ');
+    console.log(user?.providerData); // <------------------- CAN get email here TODO TODO TODO :3 :3 :3
 
     const serialized = user ? toSerializedUser(user) : null;
 
@@ -102,6 +107,10 @@ export default defineBackground(() => {
     const user =
       await storage.getItem<ReturnType<typeof toSerializedUser>>('local:user');
     console.log('in messaging, user:', user);
+    console.log(
+      'TODO REMOVE AFTER DEBUG in messaging, user email:',
+      user?.email,
+    ); // TODO REMOVE AFTER DEBUG
     return user;
   });
 

@@ -75,5 +75,6 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     logout,
   };
   console.log('AuthContextProvider User', value.user?.displayName);
+  console.log('ninja', value.user?.email);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
