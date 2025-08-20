@@ -13,7 +13,7 @@ import { summarizeVideo } from './ai';
 function toSerializedUser(user: User): SerializedUser {
   return {
     uid: user.uid,
-    email: user.email,
+    email: user.email || user.providerData[0].email,
     displayName: user.displayName,
     photoURL: user.photoURL,
   };
@@ -50,7 +50,7 @@ const performFirefoxGoogleLogin = async () => {
     console.log('Redirect URI:', redirectUri);
 
     const responseUrl = await browser.identity.launchWebAuthFlow({
-      url: `https://accounts.google.com/o/oauth2/v2/auth?response_type=id_token&nonce=${nonce}&scope=openid%20profile&client_id=${oauthClientId}&redirect_uri=${redirectUri}`,
+      url: `https://accounts.google.com/o/oauth2/v2/auth?response_type=id_token&nonce=${nonce}&scope=openid%20profile%20email&client_id=${oauthClientId}&redirect_uri=${redirectUri}`,
       interactive: true,
     });
 
