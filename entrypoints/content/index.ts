@@ -85,13 +85,261 @@ export default defineContentScript({
       return true;
     };
 
-    const dropdownItems = Array.from({ length: 100 }, (_, i) => ({
-      id: i.toString(),
-      name: ['Cat', 'Dog', 'Elephant', 'Tiger', 'Panda'][i % 5] + ` ${i}`,
-      avatar: `https://i.pravatar.cc/24?img=${i % 70}`,
-    }));
+    function createDropdown(anchorButton: HTMLElement) {
+      const existing = document.querySelector('#custom-dropdown');
+      if (existing) {
+        existing.remove();
+        document.removeEventListener('click', outsideClickHandler);
+        return;
+      }
 
-    //TODO fix this
+      const items = [
+        {
+          id: 'blackbear',
+          label: 'Black Bear',
+          img: 'https://placebear.com/32/32',
+        },
+        {
+          id: 'polarbear',
+          label: 'Polar Bear',
+          img: 'https://placebear.com/32/32',
+        },
+        {
+          id: 'elephant',
+          label: 'Elephant',
+          img: 'https://randomuser.me/api/portraits/women/1.jpg',
+        },
+        {
+          id: 'monkey',
+          label: 'Monkey',
+          img: 'https://randomuser.me/api/portraits/men/2.jpg',
+        },
+        {
+          id: 'parrot',
+          label: 'Parrot',
+          img: 'https://randomuser.me/api/portraits/women/3.jpg',
+        },
+        {
+          id: 'rabbit',
+          label: 'Rabbit',
+          img: 'https://randomuser.me/api/portraits/men/4.jpg',
+        },
+        {
+          id: 'snake',
+          label: 'Snake',
+          img: 'https://randomuser.me/api/portraits/women/5.jpg',
+        },
+      ];
+
+      let selectedIds = new Set<string>();
+
+      const container = document.createElement('div');
+      container.id = 'custom-dropdown';
+      container.style.position = 'absolute';
+      let offset = 285; // TODO fix this offset thing to have relative positioning later
+      container.style.top = `${anchorButton.getBoundingClientRect().top + window.scrollY - offset}px`;
+      container.style.left = `${anchorButton.getBoundingClientRect().left + window.scrollX}px`;
+      container.style.width = '250px';
+      container.style.background = '#fff';
+      container.style.border = '1px solid #ccc';
+      container.style.borderRadius = '6px';
+      container.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+      container.style.zIndex = '9999';
+      container.style.padding = '8px';
+      container.style.fontFamily = 'Arial, sans-serif';
+      container.style.display = 'flex';
+      container.style.flexDirection = 'column';
+      container.style.maxHeight = '250px'; // max height of container containing selection options
+
+      // Search bar
+      const search = document.createElement('input');
+      search.type = 'text';
+      search.placeholder = 'Search...';
+      search.style.width = '100%';
+      search.style.padding = '6px';
+      search.style.marginBottom = '8px';
+      search.style.boxSizing = 'border-box';
+      search.style.border = '1px solid #ccc';
+      search.style.borderRadius = '4px';
+      container.appendChild(search);
+
+      // Toolbar
+      const toolbar = document.createElement('div');
+      toolbar.style.display = 'flex';
+      toolbar.style.justifyContent = 'space-between';
+      toolbar.style.alignItems = 'center';
+      toolbar.style.marginBottom = '6px';
+
+      const selectAllWrapper = document.createElement('div');
+      selectAllWrapper.style.display = 'flex';
+      selectAllWrapper.style.alignItems = 'center';
+
+      const selectAllCheckbox = document.createElement('input');
+      selectAllCheckbox.type = 'checkbox';
+      selectAllCheckbox.id = 'select-all';
+
+      const selectAllLabel = document.createElement('label');
+      selectAllLabel.textContent = ' Select all';
+      selectAllLabel.style.marginLeft = '4px';
+
+      selectAllWrapper.appendChild(selectAllCheckbox);
+      selectAllWrapper.appendChild(selectAllLabel);
+      toolbar.appendChild(selectAllWrapper);
+      container.appendChild(toolbar);
+
+      // Item list
+      const itemList = document.createElement('div');
+      itemList.style.overflowY = 'auto';
+      itemList.style.flex = '1';
+      itemList.style.maxHeight = '160px';
+      container.appendChild(itemList);
+
+      // No results message
+      const noResults = document.createElement('div');
+      noResults.textContent = 'No results found';
+      noResults.style.textAlign = 'center';
+      noResults.style.color = '#666';
+      noResults.style.padding = '8px';
+      noResults.style.display = 'none';
+      itemList.appendChild(noResults);
+
+      // Footer
+      const footer = document.createElement('div');
+      footer.style.display = 'flex';
+      footer.style.justifyContent = 'flex-end';
+      footer.style.marginTop = '8px';
+
+      const confirmBtn = document.createElement('button');
+      confirmBtn.textContent = 'Confirm';
+      confirmBtn.style.background = '#1a73e8';
+      confirmBtn.style.color = 'white';
+      confirmBtn.style.border = 'none';
+      confirmBtn.style.borderRadius = '4px';
+      confirmBtn.style.padding = '6px 12px';
+      confirmBtn.style.cursor = 'pointer';
+      confirmBtn.disabled = true;
+      confirmBtn.style.opacity = '0.5';
+
+      footer.appendChild(confirmBtn);
+
+      const updateConfirmBtnState = () => {
+        const anySelected = selectedIds.size > 0;
+        confirmBtn.disabled = !anySelected;
+        confirmBtn.style.opacity = anySelected ? '1' : '0.5';
+      };
+
+      const updateSelectAllState = (visibleFiltered: typeof items) => {
+        const allVisibleSelected =
+          visibleFiltered.length > 0 &&
+          visibleFiltered.every((i) => selectedIds.has(i.id));
+        const noneVisibleSelected = visibleFiltered.every(
+          (i) => !selectedIds.has(i.id),
+        );
+
+        if (allVisibleSelected) {
+          selectAllCheckbox.checked = true;
+          selectAllCheckbox.indeterminate = false;
+        } else if (noneVisibleSelected) {
+          selectAllCheckbox.checked = false;
+          selectAllCheckbox.indeterminate = false;
+        } else {
+          selectAllCheckbox.indeterminate = true;
+        }
+      };
+
+      const renderItems = (filter = '') => {
+        itemList.innerHTML = ''; // clear
+        const filtered = items.filter((item) =>
+          item.label.toLowerCase().includes(filter.toLowerCase()),
+        );
+
+        if (filtered.length === 0) {
+          noResults.style.display = 'block';
+          itemList.appendChild(noResults);
+        } else {
+          noResults.style.display = 'none';
+          filtered.forEach((item) => {
+            const row = document.createElement('div');
+            row.style.display = 'flex';
+            row.style.alignItems = 'center';
+            row.style.marginBottom = '4px';
+
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.checked = selectedIds.has(item.id);
+            checkbox.id = `opt-${item.id}`;
+            checkbox.onchange = () => {
+              if (checkbox.checked) selectedIds.add(item.id);
+              else selectedIds.delete(item.id);
+              updateConfirmBtnState();
+              updateSelectAllState(filtered);
+            };
+
+            const img = document.createElement('img');
+            img.src = item.img;
+            img.alt = '';
+            img.style.width = '24px';
+            img.style.height = '24px';
+            img.style.borderRadius = '50%';
+            img.style.marginLeft = '6px';
+
+            const label = document.createElement('label');
+            label.htmlFor = checkbox.id;
+            label.textContent = ` ${item.label}`;
+            label.style.marginLeft = '8px';
+
+            row.appendChild(checkbox);
+            row.appendChild(img);
+            row.appendChild(label);
+            itemList.appendChild(row);
+          });
+        }
+
+        updateConfirmBtnState();
+        updateSelectAllState(filtered);
+      };
+
+      // Now select-all only affects filtered items
+      selectAllCheckbox.onchange = () => {
+        const filter = search.value;
+        const visibleItems = items.filter((item) =>
+          item.label.toLowerCase().includes(filter.toLowerCase()),
+        );
+
+        if (selectAllCheckbox.checked) {
+          visibleItems.forEach((item) => selectedIds.add(item.id));
+        } else {
+          visibleItems.forEach((item) => selectedIds.delete(item.id));
+        }
+        renderItems(filter);
+      };
+
+      confirmBtn.onclick = () => {
+        console.log('Selected IDs:', Array.from(selectedIds));
+        container.remove();
+        document.removeEventListener('click', outsideClickHandler);
+      };
+
+      search.oninput = () => renderItems(search.value);
+      renderItems();
+
+      container.appendChild(footer);
+      document.body.appendChild(container);
+
+      function outsideClickHandler(e: MouseEvent) {
+        if (
+          !container.contains(e.target as Node) &&
+          !anchorButton.contains(e.target as Node)
+        ) {
+          container.remove();
+          document.removeEventListener('click', outsideClickHandler);
+        }
+      }
+      setTimeout(() => {
+        document.addEventListener('click', outsideClickHandler);
+      }, 0);
+    }
+
     const injectShareDropdownButton = (): boolean => {
       const controls = document.querySelector('.ytp-left-controls');
       if (!controls || controls.querySelector('#share-dropdown-button'))
@@ -108,122 +356,18 @@ export default defineContentScript({
       button.style.userSelect = 'none';
       button.textContent = '✉️';
 
-      // Dropdown container
-      const dropdown = document.createElement('div');
-      dropdown.id = 'share-dropdown-list';
-      dropdown.style.position = 'absolute';
-      dropdown.style.top = '50px';
-      dropdown.style.left = '20px';
-      dropdown.style.zIndex = '9999';
-      dropdown.style.width = '250px';
-      dropdown.style.maxHeight = '300px';
-      dropdown.style.overflowY = 'auto';
-      dropdown.style.background = 'white';
-      dropdown.style.border = '1px solid #ccc';
-      dropdown.style.borderRadius = '4px';
-      dropdown.style.boxShadow = '0px 2px 10px rgba(0,0,0,0.15)';
-      dropdown.style.padding = '10px';
-      dropdown.style.display = 'none';
-      dropdown.style.fontSize = '14px';
-
-      // Search input
-      const search = document.createElement('input');
-      search.type = 'text';
-      search.placeholder = 'Search...';
-      search.style.width = '100%';
-      search.style.marginBottom = '10px';
-      search.style.padding = '5px';
-      dropdown.appendChild(search);
-
-      // Select all
-      const selectAllWrapper = document.createElement('div');
-      const selectAllCheckbox = document.createElement('input');
-      selectAllCheckbox.type = 'checkbox';
-      selectAllCheckbox.id = 'select-all-checkbox';
-      const selectAllLabel = document.createElement('label');
-      selectAllLabel.textContent = ' Select all';
-      selectAllWrapper.appendChild(selectAllCheckbox);
-      selectAllWrapper.appendChild(selectAllLabel);
-      dropdown.appendChild(selectAllWrapper);
-
-      // Item container
-      const itemContainer = document.createElement('div');
-      dropdown.appendChild(itemContainer);
-
-      const renderItems = (query = '') => {
-        itemContainer.innerHTML = '';
-        dropdownItems
-          .filter((item) =>
-            item.name.toLowerCase().includes(query.toLowerCase()),
-          )
-          .forEach((item) => {
-            const wrapper = document.createElement('div');
-            wrapper.style.display = 'flex';
-            wrapper.style.alignItems = 'center';
-            wrapper.style.marginBottom = '4px';
-
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.value = item.id;
-            checkbox.style.marginRight = '8px';
-
-            const img = document.createElement('img');
-            img.src = item.avatar;
-            img.style.width = '24px';
-            img.style.height = '24px';
-            img.style.borderRadius = '50%';
-            img.style.marginRight = '8px';
-
-            const label = document.createElement('span');
-            label.textContent = item.name;
-
-            wrapper.appendChild(checkbox);
-            wrapper.appendChild(img);
-            wrapper.appendChild(label);
-            itemContainer.appendChild(wrapper);
-          });
+      button.onmouseenter = () => {
+        button.style.opacity = '0.8';
+      };
+      button.onmouseleave = () => {
+        button.style.opacity = '1';
       };
 
-      renderItems();
-
-      // Select All Logic
-      selectAllCheckbox.addEventListener('change', () => {
-        const checkboxes = itemContainer.querySelectorAll(
-          'input[type="checkbox"]',
-        );
-        checkboxes.forEach(
-          (cb) =>
-            ((cb as HTMLInputElement).checked = selectAllCheckbox.checked),
-        );
-      });
-
-      // Search Filter
-      search.addEventListener('input', () => {
-        renderItems(search.value);
-      });
-
-      // Toggle dropdown
-      let dropdownOpen = false;
-      const toggleDropdown = () => {
-        dropdown.style.display = dropdownOpen ? 'none' : 'block';
-        dropdownOpen = !dropdownOpen;
+      button.onclick = () => {
+        createDropdown(button);
       };
-
-      button.onclick = (e) => {
-        e.stopPropagation(); // prevent window click from triggering close
-        toggleDropdown();
-      };
-
-      // Close dropdown on outside click
-      window.addEventListener('click', (e) => {
-        if (dropdownOpen) {
-          dropdown.style.display = 'none';
-          dropdownOpen = false;
-        }
-      });
 
       controls.appendChild(button);
-      document.body.appendChild(dropdown);
 
       return true;
     };
