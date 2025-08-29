@@ -21,7 +21,7 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const fbStorage = getStorage(app);
 export const ai = getAI(app, { backend: new GoogleAIBackend() });
-export const functions = getFunctions(app);
+// export const functions = getFunctions(app);
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function isFirebaseUser(user: any): user is User {

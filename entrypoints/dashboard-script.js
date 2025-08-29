@@ -45,7 +45,7 @@ export default defineUnlistedScript(async () => {
       // Accept button → add to friends collection + remove request
       card.querySelector('.accept-btn').addEventListener('click', async () => {
         // // TODO: Fix how accept and reject is handled
-        acceptFriendRequest({ requestId: requestDocId });
+        // acceptFriendRequest({ requestId: requestDocId });
       });
 
       // Reject button → just delete request
