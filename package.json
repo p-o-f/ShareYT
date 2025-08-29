@@ -19,6 +19,9 @@
   "dependencies": {
     "@webext-core/messaging": "^2.3.0",
     "firebase": "^11.9.1",
+    "firebase-admin": "^13.4.0",
+    "firebase-functions": "^6.4.0",
+    "firebase-tools": "^14.14.0",
     "js-sha256": "^0.11.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"

@@ -1,9 +1,10 @@
+import { getFunctions } from 'firebase-admin/functions';
 import { getAI, GoogleAIBackend } from 'firebase/ai';
 import { FirebaseOptions, initializeApp } from 'firebase/app';
 import { getAuth, User } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
-import sha256 from 'js-sha256';
+import { sha256 } from 'js-sha256';
 
 const firebaseConfig: FirebaseOptions = {
   apiKey: 'AIzaSyD_YP_cl_lI4eCHTWzuN5_Bjiyb_Y4z7TQ',
@@ -20,6 +21,7 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const fbStorage = getStorage(app);
 export const ai = getAI(app, { backend: new GoogleAIBackend() });
+export const functions = getFunctions(app);
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function isFirebaseUser(user: any): user is User {

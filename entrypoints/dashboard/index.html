@@ -143,47 +143,41 @@
 
       <section>
         <div class="section-title">📈 Videos Shared With You</div>
-        <div class="video-grid" share-type="receiver">
-          <!-- <div class="video-card"> -->
-          <!--   <div class="video-thumbnail">320 × 180</div> -->
-          <!--   <div class="video-info"> -->
-          <!--     <strong>Focus Music for Coding</strong><br /> -->
-          <!--     <small>Shared by Aydin Mock · 1 day ago</small><br /> -->
-          <!--     <input type="checkbox" /> Mark as Watched -->
-          <!--     <span style="float: right; color: #3b4cca; cursor: pointer" -->
-          <!--       >Watch</span -->
-          <!--     > -->
-          <!--   </div> -->
-          <!-- </div> -->
-        </div>
+        <div class="video-grid" share-type="receiver"></div>
       </section>
 
       <section>
         <div class="section-title">📈 Videos You've Shared</div>
-        <div class="video-grid" share-type="sender">
-          <!-- <div class="video-card"> -->
-          <!--   <div class="video-thumbnail">320 × 180</div> -->
-          <!--   <div class="video-info"> -->
-          <!--     <strong>Never Gonna Give You Up</strong><br /> -->
-          <!--     <small>Shared with Aydin Mock · 2 days ago</small><br /> -->
-          <!--     Not yet watched -->
-          <!--     <span style="float: right; color: #3b4cca; cursor: pointer" -->
-          <!--       >Watch</span -->
-          <!--     > -->
-          <!--   </div> -->
-          <!-- </div> -->
-          <!---->
-          <!-- <div class="video-card"> -->
-          <!--   <div class="video-thumbnail">320 × 180</div> -->
-          <!--   <div class="video-info"> -->
-          <!--     <strong>Relaxing Nature Sounds</strong><br /> -->
-          <!--     <small>Shared with Willow Test · about 1 hour ago</small><br /> -->
-          <!--     Not yet watched -->
-          <!--     <span style="float: right; color: #3b4cca; cursor: pointer" -->
-          <!--       >Watch</span -->
-          <!--     > -->
-          <!--   </div> -->
-          <!-- </div> -->
+        <div class="video-grid" share-type="sender"></div>
+      </section>
+
+      <section>
+        <div class="section-title">👥 Friend Requests</div>
+
+        <!-- Friend request input -->
+        <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem">
+          <input
+            id="friend-email-input"
+            type="email"
+            placeholder="Enter friend's email..."
+            style="
+              flex: 1;
+              padding: 0.5rem;
+              border: 1px solid #ccc;
+              border-radius: 5px;
+            "
+          />
+          <button
+            id="send-friend-request"
+            class="share-button"
+            style="padding: 0.5rem 1rem; font-size: 0.9rem"
+          >
+            Send
+          </button>
+        </div>
+
+        <div class="friend-requests-grid" id="friend-requests-list">
+          <!-- Friend requests will load here -->
         </div>
       </section>
     </main>

@@ -1,5 +1,7 @@
 import { SerializedUser } from '@/types/types';
-import { clean } from 'wxt';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+
+let globalCurrentUser: SerializedUser | null = null; // global variable in script
 
 export default defineContentScript({
   matches: ['*://*.youtube.com/*'], // TODO handle YT shorts format later
@@ -41,7 +43,7 @@ export default defineContentScript({
       };
 
       // Logic for when button is clicked
-      button.onclick = () => {
+      button.onclick = async () => {
         const title = document.title;
         const url = window.location.href;
 
@@ -78,6 +80,20 @@ export default defineContentScript({
         console.log(`Subscribers: ${subscriberCount}`);
         console.log(`Thumbnail URL: ${thumbnailUrl}`);
         console.log('--------------------------------------------------');
+        // TODO: make sure the hash lines up with cloud function
+        // const uidRef = doc(db, 'user', hashEmail(targetEmail));
+        // const doc = await getDoc(uidRef);
+        // const uidOther = doc.exists() ? doc.data().uid : null;
+
+        // TODO: Figure out what my uid is
+        const uidOther = '';
+        await addDoc(collection(db, 'suggestions'), {
+          from: globalCurrentUser?.uid,
+          to: uidOther,
+          videoId,
+          watched: false,
+          createdAt: serverTimestamp(),
+        });
       };
 
       // Add button to the left controls bar
@@ -363,6 +379,7 @@ export default defineContentScript({
         } else {
           // User was previously logged out, now they are logged in
           isLoggedIn = true;
+          globalCurrentUser = currentUser;
 
           console.log('isLoggedin status after login:', isLoggedIn);
           waitForControls();
