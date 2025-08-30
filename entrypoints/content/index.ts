@@ -1,7 +1,11 @@
 import { SerializedUser } from '@/types/types';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { getDoc, doc } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
+import { hashEmail, functions, db } from '../../utils/firebase';
 
 let globalCurrentUser: SerializedUser | null = null; // global variable in script
+
+const suggestVideo = httpsCallable(functions, 'suggestVideo');
 
 export default defineContentScript({
   matches: ['*://*.youtube.com/*'], // TODO handle YT shorts format later
@@ -80,20 +84,15 @@ export default defineContentScript({
         console.log(`Subscribers: ${subscriberCount}`);
         console.log(`Thumbnail URL: ${thumbnailUrl}`);
         console.log('--------------------------------------------------');
-        // TODO: make sure the hash lines up with cloud function
-        // const uidRef = doc(db, 'user', hashEmail(targetEmail));
-        // const doc = await getDoc(uidRef);
-        // const uidOther = doc.exists() ? doc.data().uid : null;
+        const targetEmail = '';
 
-        // TODO: Figure out what my uid is
-        const uidOther = '';
-        await addDoc(collection(db, 'suggestions'), {
-          from: globalCurrentUser?.uid,
-          to: uidOther,
-          videoId,
-          watched: false,
-          createdAt: serverTimestamp(),
-        });
+        // Do not need to wait for this to complete
+        try {
+          await suggestVideo({ videoId, to: targetEmail, thumbnailUrl, title });
+        } catch (err: any) {
+          console.error('error', err.message);
+        }
+        console.log('done');
       };
 
       // Add button to the left controls bar

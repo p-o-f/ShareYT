@@ -6,6 +6,7 @@ import * as crypto from 'crypto';
 setGlobalOptions({ maxInstances: 10 });
 
 admin.initializeApp();
+const db = admin.firestore();
 
 export const createEmailHash = functions.auth.user().onCreate(async (user) => {
   if (!user.email || !user.uid) return;
@@ -57,3 +58,66 @@ export const acceptFriendRequest = functions.https.onCall(
     });
   },
 );
+
+exports.suggestVideo = functions.https.onCall(async (data, context) => {
+  // Make sure the user is authenticated
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+      'unauthenticated',
+      'You must be signed in to suggest a video.',
+    );
+  }
+
+  const { videoId, to, thumbnailUrl, title } = data;
+
+  // Check required fields
+  if (!videoId || !to || !thumbnailUrl || !title) {
+    throw new functions.https.HttpsError('invalid-argument', 'Missing fields.');
+  }
+
+  let toUid;
+  try {
+    toUid = (await admin.auth().getUserByEmail(to)).uid;
+  } catch {
+    throw new functions.https.HttpsError(
+      'not-found',
+      'User with this email not found.',
+    );
+  }
+
+  try {
+    // Check if friend request exists
+    const friendRequestsSnapshot = await db
+      .collection('friendRequests')
+      .where('from', '==', context.auth.uid)
+      .where('to', '==', toUid)
+      .limit(1)
+      .get();
+
+    if (friendRequestsSnapshot.empty) {
+      throw new functions.https.HttpsError(
+        'failed-precondition',
+        'No friend request exists between these users.',
+      );
+    }
+
+    // Add video suggestion
+    const suggestionRef = await db.collection('suggestedvideos').add({
+      videoId,
+      from: context.auth.uid,
+      to: toUid,
+      thumbnailUrl,
+      title,
+      watched: false,
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    return { success: true, id: suggestionRef.id };
+  } catch (error) {
+    console.error('Error suggesting video:', error);
+    throw new functions.https.HttpsError(
+      'unknown',
+      'An error occurred while suggesting the video.',
+    );
+  }
+});

@@ -9,12 +9,12 @@ import {
   query,
   where,
 } from 'firebase/firestore';
-// import { hashEmail, functions } from '../utils/firebase';
-import { hashEmail } from '../utils/firebase';
-// import { httpsCallable } from 'firebase/functions';
+import { hashEmail, functions } from '../utils/firebase';
+import { httpsCallable } from 'firebase/functions';
+
+const acceptFriendRequest = httpsCallable(functions, 'acceptFriendRequest');
 
 export default defineUnlistedScript(async () => {
-  // const acceptFriendRequest = httpsCallable(functions, 'acceptFriendRequest');
   async function loadDashboardData() {
     const user = await storage.getItem('local:user');
     const userEmail = user.email;
@@ -45,7 +45,7 @@ export default defineUnlistedScript(async () => {
       // Accept button → add to friends collection + remove request
       card.querySelector('.accept-btn').addEventListener('click', async () => {
         // // TODO: Fix how accept and reject is handled
-        // acceptFriendRequest({ requestId: requestDocId });
+        acceptFriendRequest({ requestId: requestDocId });
       });
 
       // Reject button → just delete request
