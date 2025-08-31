@@ -102,7 +102,7 @@ exports.suggestVideo = functions.https.onCall(async (data, context) => {
     }
 
     // Add video suggestion
-    const suggestionRef = await db.collection('suggestedvideos').add({
+    const suggestionRef = await db.collection('suggestedVideos').add({
       videoId,
       from: context.auth.uid,
       to: toUid,

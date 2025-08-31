@@ -8,17 +8,21 @@ import {
   serverTimestamp,
   query,
   where,
+  getDocs,
 } from 'firebase/firestore';
 import { hashEmail, functions } from '../utils/firebase';
 import { httpsCallable } from 'firebase/functions';
 
 const acceptFriendRequest = httpsCallable(functions, 'acceptFriendRequest');
+const suggestVideo = httpsCallable(functions, 'suggestVideo');
 
 export default defineUnlistedScript(async () => {
   async function loadDashboardData() {
     const user = await storage.getItem('local:user');
     const userEmail = user.email;
     const userId = user.uid;
+    suggestVideo({});
+    console.log('suggest video called');
     console.log(user);
     console.log('hash email', hashEmail(userEmail));
 
@@ -44,7 +48,6 @@ export default defineUnlistedScript(async () => {
 
       // Accept button → add to friends collection + remove request
       card.querySelector('.accept-btn').addEventListener('click', async () => {
-        // // TODO: Fix how accept and reject is handled
         acceptFriendRequest({ requestId: requestDocId });
       });
 
@@ -125,25 +128,33 @@ export default defineUnlistedScript(async () => {
       return card;
     }
 
-    function watchCollection(path, role) {
-      // TODO: update these to not have the hash
-      const videoRef = collection(db, 'users', hashEmail(userEmail), path);
+    function watchCollection(role) {
+      console.log('in watch');
       const videoGrid = document.querySelector(
-        `.video-grid[share-type=${role}]`,
+        `.video-grid[share-type="${role}"]`,
       );
 
-      onSnapshot(videoRef, (snapshot) => {
+      if (!videoGrid) return;
+
+      const field = role === 'sender' ? 'from' : 'to';
+      const q = query(
+        collection(db, 'suggestedVideos'),
+        where(field, '==', userId),
+      );
+
+      // Subscribe to real-time updates
+      onSnapshot(q, (snapshot) => {
         videoGrid.innerHTML = '';
         snapshot.forEach((doc) => {
-          const data = doc.data();
+          const data = { id: doc.id, ...doc.data() };
           videoGrid.appendChild(renderVideoCard(data, role));
         });
       });
     }
 
     // // Watch inbox/outbox
-    // watchCollection('inbox', 'receiver');
-    // watchCollection('outbox', 'sender');
+    watchCollection('receiver');
+    watchCollection('sender');
 
     // Watch friend requests
     watchFriendRequests();

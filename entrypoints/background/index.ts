@@ -9,6 +9,7 @@ import { auth } from '../../utils/firebase';
 import { firebaseAuth } from './offscreenInteraction';
 import { SerializedUser } from '@/types/types';
 import { summarizeVideo } from './ai';
+import { httpsCallable } from 'firebase/functions';
 
 function toSerializedUser(user: User): SerializedUser {
   return {
@@ -149,5 +150,16 @@ export default defineBackground(() => {
       'https://www.youtube.com/watch?v=YpPGRJhOP8k&pp=ygUYYW1hemZpdCBiYWxhbmNlIDIgcmV2aWV3'; // temporary hardcoded URL for testing
     const summary = summarizeVideo(videoUrl);
     return summary;
+  });
+
+  messaging.onMessage('reccomend:video', ({ data }) => {
+    console.log('in reccomending video backgroudn');
+    const suggestVideo = httpsCallable(functions, 'suggestVideo');
+    suggestVideo({
+      videoId: data!.videoId,
+      to: data!.to,
+      thumbnailUrl: data!.thumbnailUrl,
+      title: data!.title,
+    });
   });
 });

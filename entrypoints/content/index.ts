@@ -1,11 +1,9 @@
 import { SerializedUser } from '@/types/types';
 import { getDoc, doc } from 'firebase/firestore';
-import { httpsCallable } from 'firebase/functions';
-import { hashEmail, functions, db } from '../../utils/firebase';
+import { hashEmail } from '../../utils/firebase';
 
 let globalCurrentUser: SerializedUser | null = null; // global variable in script
-
-const suggestVideo = httpsCallable(functions, 'suggestVideo');
+// export const suggestVideo = httpsCallable(functions, 'suggestVideo');
 
 export default defineContentScript({
   matches: ['*://*.youtube.com/*'], // TODO handle YT shorts format later
@@ -80,19 +78,18 @@ export default defineContentScript({
         console.log('--------------------------------------------------');
         console.log(`Video title: ${title}`);
         console.log(`URL: ${url}`);
-        console.log(`Channel: ${channelName}`);
         console.log(`Subscribers: ${subscriberCount}`);
         console.log(`Thumbnail URL: ${thumbnailUrl}`);
         console.log('--------------------------------------------------');
         const targetEmail = '';
 
-        // Do not need to wait for this to complete
-        try {
-          await suggestVideo({ videoId, to: targetEmail, thumbnailUrl, title });
-        } catch (err: any) {
-          console.error('error', err.message);
-        }
-        console.log('done');
+        messaging.sendMessage('reccomend:video', {
+          videoId,
+          to: targetEmail,
+          thumbnailUrl,
+          title,
+        });
+        console.log('done sending message');
       };
 
       // Add button to the left controls bar
@@ -356,6 +353,8 @@ export default defineContentScript({
       );
       if (loggedInBefore && loggedInBefore > 0) {
         isLoggedIn = true;
+        globalCurrentUser = await storage.getItem('local:user');
+        console.error('globalcurrent', globalCurrentUser);
         waitForControls();
         startLoggingTimeOnceReady();
       }
@@ -369,6 +368,7 @@ export default defineContentScript({
         if (!currentUser && previousUser) {
           // User was previously logged in, now they are logged out
           isLoggedIn = false;
+          globalCurrentUser = null;
           console.log('isLoggedin status after logout:', isLoggedIn);
           cleanUpState();
 
