@@ -8,29 +8,22 @@ import {
   serverTimestamp,
   query,
   where,
-  getDocs,
 } from 'firebase/firestore';
 import { hashEmail, functions } from '../utils/firebase';
 import { httpsCallable } from 'firebase/functions';
 
 const acceptFriendRequest = httpsCallable(functions, 'acceptFriendRequest');
-const suggestVideo = httpsCallable(functions, 'suggestVideo');
 
 export default defineUnlistedScript(async () => {
   async function loadDashboardData() {
     const user = await storage.getItem('local:user');
     const userEmail = user.email;
     const userId = user.uid;
-    suggestVideo({});
-    console.log('suggest video called');
-    console.log(user);
-    console.log('hash email', hashEmail(userEmail));
 
     // ---------------------------
     // RENDER FRIEND REQUEST CARD
     // ---------------------------
     function renderFriendRequestCard(requestDocId, requestData) {
-      console.log('requestdocid', requestDocId);
       const html = `
         <div class="video-card" style="width: 280px;">
           <div class="video-info">
@@ -73,7 +66,6 @@ export default defineUnlistedScript(async () => {
         reqGrid.innerHTML = ''; // Clear old requests
         snapshot.forEach((docSnap) => {
           const data = docSnap.data();
-          console.log('data', data);
           reqGrid.appendChild(renderFriendRequestCard(docSnap.id, data));
         });
       });
@@ -129,7 +121,6 @@ export default defineUnlistedScript(async () => {
     }
 
     function watchCollection(role) {
-      console.log('in watch');
       const videoGrid = document.querySelector(
         `.video-grid[share-type="${role}"]`,
       );
@@ -165,7 +156,6 @@ export default defineUnlistedScript(async () => {
     const emailInput = document.getElementById('friend-email-input');
     const sendBtn = document.getElementById('send-friend-request');
 
-    console.log('userid', userId);
     async function sendFriendRequest() {
       const targetEmail = emailInput.value.trim().toLowerCase();
       if (!targetEmail) return alert('Please enter an email.');
@@ -182,7 +172,6 @@ export default defineUnlistedScript(async () => {
       if (uidOther === null) {
         return alrt('Other uid not found');
       }
-      console.log('uidother', uidOther);
 
       await addDoc(collection(db, 'friendRequests'), {
         from: userId,

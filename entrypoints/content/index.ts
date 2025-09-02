@@ -83,13 +83,13 @@ export default defineContentScript({
         console.log('--------------------------------------------------');
         const targetEmail = '';
 
+        // Have the background call the cloud function for us
         messaging.sendMessage('reccomend:video', {
           videoId,
           to: targetEmail,
           thumbnailUrl,
           title,
         });
-        console.log('done sending message');
       };
 
       // Add button to the left controls bar
