@@ -9,11 +9,12 @@ import { auth } from '../../utils/firebase';
 import { firebaseAuth } from './offscreenInteraction';
 import { SerializedUser } from '@/types/types';
 import { summarizeVideo } from './ai';
+import { httpsCallable } from 'firebase/functions';
 
 function toSerializedUser(user: User): SerializedUser {
   return {
     uid: user.uid,
-    email: user.email,
+    email: user.email || user.providerData[0].email,
     displayName: user.displayName,
     photoURL: user.photoURL,
   };
@@ -50,7 +51,7 @@ const performFirefoxGoogleLogin = async () => {
     console.log('Redirect URI:', redirectUri);
 
     const responseUrl = await browser.identity.launchWebAuthFlow({
-      url: `https://accounts.google.com/o/oauth2/v2/auth?response_type=id_token&nonce=${nonce}&scope=openid%20profile&client_id=${oauthClientId}&redirect_uri=${redirectUri}`,
+      url: `https://accounts.google.com/o/oauth2/v2/auth?response_type=id_token&nonce=${nonce}&scope=openid%20profile%20email&client_id=${oauthClientId}&redirect_uri=${redirectUri}`,
       interactive: true,
     });
 
@@ -149,5 +150,16 @@ export default defineBackground(() => {
       'https://www.youtube.com/watch?v=YpPGRJhOP8k&pp=ygUYYW1hemZpdCBiYWxhbmNlIDIgcmV2aWV3'; // temporary hardcoded URL for testing
     const summary = summarizeVideo(videoUrl);
     return summary;
+  });
+
+  messaging.onMessage('reccomend:video', ({ data }) => {
+    console.log('in reccomending video backgroudn');
+    const suggestVideo = httpsCallable(functions, 'suggestVideo');
+    suggestVideo({
+      videoId: data!.videoId,
+      to: data!.to,
+      thumbnailUrl: data!.thumbnailUrl,
+      title: data!.title,
+    });
   });
 });

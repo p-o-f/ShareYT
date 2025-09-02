@@ -1,5 +1,9 @@
 import { SerializedUser } from '@/types/types';
-import { clean } from 'wxt';
+import { getDoc, doc } from 'firebase/firestore';
+import { hashEmail } from '../../utils/firebase';
+
+let globalCurrentUser: SerializedUser | null = null; // global variable in script
+// export const suggestVideo = httpsCallable(functions, 'suggestVideo');
 
 export default defineContentScript({
   matches: ['*://*.youtube.com/*'], // TODO handle YT shorts format later
@@ -41,7 +45,7 @@ export default defineContentScript({
       };
 
       // Logic for when button is clicked
-      button.onclick = () => {
+      button.onclick = async () => {
         const title = document.title;
         const url = window.location.href;
 
@@ -74,10 +78,18 @@ export default defineContentScript({
         console.log('--------------------------------------------------');
         console.log(`Video title: ${title}`);
         console.log(`URL: ${url}`);
-        console.log(`Channel: ${channelName}`);
         console.log(`Subscribers: ${subscriberCount}`);
         console.log(`Thumbnail URL: ${thumbnailUrl}`);
         console.log('--------------------------------------------------');
+        const targetEmail = '';
+
+        // Have the background call the cloud function for us
+        messaging.sendMessage('reccomend:video', {
+          videoId,
+          to: targetEmail,
+          thumbnailUrl,
+          title,
+        });
       };
 
       // Add button to the left controls bar
@@ -485,6 +497,8 @@ export default defineContentScript({
       );
       if (loggedInBefore && loggedInBefore > 0) {
         isLoggedIn = true;
+        globalCurrentUser = await storage.getItem('local:user');
+        console.error('globalcurrent', globalCurrentUser);
         waitForControls();
         startLoggingTimeOnceReady();
       }
@@ -498,6 +512,7 @@ export default defineContentScript({
         if (!currentUser && previousUser) {
           // User was previously logged in, now they are logged out
           isLoggedIn = false;
+          globalCurrentUser = null;
           console.log('isLoggedin status after logout:', isLoggedIn);
           cleanUpState();
 
@@ -507,6 +522,7 @@ export default defineContentScript({
         } else {
           // User was previously logged out, now they are logged in
           isLoggedIn = true;
+          globalCurrentUser = currentUser;
 
           console.log('isLoggedin status after login:', isLoggedIn);
           waitForControls();
