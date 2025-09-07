@@ -2,9 +2,6 @@ import { SerializedUser } from '@/types/types';
 import { getDoc, doc } from 'firebase/firestore';
 import { hashEmail } from '../../utils/firebase';
 
-let globalCurrentUser: SerializedUser | null = null; // global variable in script
-// export const suggestVideo = httpsCallable(functions, 'suggestVideo');
-
 export default defineContentScript({
   matches: ['*://*.youtube.com/*'], // TODO handle YT shorts format later
   runAt: 'document_idle',
@@ -497,8 +494,6 @@ export default defineContentScript({
       );
       if (loggedInBefore && loggedInBefore > 0) {
         isLoggedIn = true;
-        globalCurrentUser = await storage.getItem('local:user');
-        console.error('globalcurrent', globalCurrentUser);
         waitForControls();
         startLoggingTimeOnceReady();
       }
@@ -512,7 +507,6 @@ export default defineContentScript({
         if (!currentUser && previousUser) {
           // User was previously logged in, now they are logged out
           isLoggedIn = false;
-          globalCurrentUser = null;
           console.log('isLoggedin status after logout:', isLoggedIn);
           cleanUpState();
 
@@ -522,7 +516,6 @@ export default defineContentScript({
         } else {
           // User was previously logged out, now they are logged in
           isLoggedIn = true;
-          globalCurrentUser = currentUser;
 
           console.log('isLoggedin status after login:', isLoggedIn);
           waitForControls();
