@@ -17,6 +17,15 @@ const acceptFriendRequest = httpsCallable(functions, 'acceptFriendRequest');
 export default defineUnlistedScript(async () => {
   async function loadDashboardData() {
     const user = await storage.getItem('local:user');
+    if (!user) {
+      // Edge case where user enters direct URL (like chrome-extension://okgeoiihamcnmicnhaojpflilhfhghjp/dashboard.html) without being logged in: show alternate screen
+      document.body.innerHTML = `
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;">
+        <h2>Please log in to ShareYT first to view your dashboard.</h2>
+      </div>
+    `;
+      return;
+    }
     const userEmail = user.email;
     const userId = user.uid;
 
