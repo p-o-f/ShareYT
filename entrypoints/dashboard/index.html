@@ -126,14 +126,14 @@
     <header>
       <div class="logo">ShareYT</div>
       <div class="profile">
-        <img src="https://via.placeholder.com/32" alt="Profile Picture" />
-        <span>Aydin Sample</span>
+        <img id="profile-picture" src="" alt="Profile Picture" />
+        <span id="profile-username"></span>
       </div>
     </header>
 
     <main>
       <div class="greeting">
-        <h2>Hello, <strong>Aydin Sample</strong>!</h2>
+        <h2>Hello, <strong id="greeting-username"></strong>!</h2>
         <p>
           Share some interesting videos or catch up on what your friends sent
           you!
@@ -142,12 +142,12 @@
       </div>
 
       <section>
-        <div class="section-title">📈 Videos Shared With You</div>
+        <div class="section-title">🎁 Videos Shared With You</div>
         <div class="video-grid" share-type="receiver"></div>
       </section>
 
       <section>
-        <div class="section-title">📈 Videos You've Shared</div>
+        <div class="section-title">📤 Videos You've Shared</div>
         <div class="video-grid" share-type="sender"></div>
       </section>
 
@@ -182,7 +182,7 @@
       </section>
     </main>
 
-    <footer>ShareYT – video sharing made simple</footer>
+    <footer>ShareYT – Video sharing made simple.</footer>
 
     <script type="module">
       const script = document.createElement('script');

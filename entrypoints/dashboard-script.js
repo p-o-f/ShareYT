@@ -20,6 +20,14 @@ export default defineUnlistedScript(async () => {
     const userEmail = user.email;
     const userId = user.uid;
 
+    // inside loadDashboardData, after fetching user, set user info in DOM of dashboard
+    document.getElementById('profile-username').textContent =
+      user.displayName || user.name || user.email || '';
+    document.getElementById('greeting-username').textContent =
+      user.displayName || user.name || user.email || '';
+    document.getElementById('profile-picture').src =
+      user.photoURL || 'https://www.gravatar.com/avatar?d=mp';
+
     // ---------------------------
     // RENDER FRIEND REQUEST CARD
     // ---------------------------
