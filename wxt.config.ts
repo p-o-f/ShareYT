@@ -1,8 +1,10 @@
 import { defineConfig } from 'wxt';
 
-// See https://wxt.dev/api/config.html
 export default defineConfig({
-  modules: ['@wxt-dev/module-react'],
+  modules: [
+    '@wxt-dev/module-react',
+    // '@wxt-dev/auto-icons', // for later, if can get it working
+  ],
   manifest: ({ manifestVersion }) => {
     return {
       permissions: ['identity', 'offscreen', 'storage'],
@@ -14,15 +16,14 @@ export default defineConfig({
       },
       browser_specific_settings: {
         gecko: {
-          id: 'shareyt-extension@shareyt.com', // pinned extension ID for Firefox, might be required for publishing/signing
-          strict_min_version: '115.0', // minimum Firefox version
+          id: 'shareyt-extension@shareyt.com',
+          strict_min_version: '115.0',
         },
       },
       web_accessible_resources: [
-        // needed for the dashboard.html to be accessible from any web page or content script
         {
           resources: ['dashboard.html', 'dashboard-script.js'],
-          matches: ['<all_urls>'], // todo make URLs more specific for security probably - just need this so content scripts can access the dashboard
+          matches: ['<all_urls>'],
         },
       ],
     };
