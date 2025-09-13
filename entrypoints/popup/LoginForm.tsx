@@ -2,8 +2,6 @@ import { useAuth } from './AuthContext';
 import { messaging } from '../../utils/messaging';
 import { useState } from 'react';
 
-export const userInfo = 1;
-
 export default function LoginForm() {
   const { user, loginWithGoogle, logout, loading } = useAuth();
   const [summary, setSummary] = useState<string | null>(null);
