@@ -15,6 +15,10 @@ import { httpsCallable } from 'firebase/functions';
 const acceptFriendRequest = httpsCallable(functions, 'acceptFriendRequest');
 
 export default defineUnlistedScript(async () => {
+  console.log(
+    'Unlisted script running in this manifest version',
+    browser.runtime.getManifest().manifest_version,
+  );
   async function loadDashboardData() {
     const user = await storage.getItem('local:user');
     if (!user) {

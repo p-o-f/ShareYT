@@ -124,10 +124,11 @@ export default defineBackground(() => {
           // TODO: no need to return anything
           return serialized;
     */
-    await performChromeLogin(); // ^ this function just does the above code, but it is here for clarity's sake of making it more obvious what is happening
+    //wait performChromeLogin(); // ^ this function just does the above code, but it is here for clarity's sake of making it more obvious what is happening
     // TODO remove the giant blurb ^^ of /* */ if everything works as before (which it should, I'm just paranoid so putting this reminder here lol)
-
+    const user = await performChromeLogin();
     await storage.setItem('local:isLoggedInGlobal', 1);
+    return user;
   });
 
   messaging.onMessage('auth:signInFirefox', async () => {
@@ -141,7 +142,7 @@ export default defineBackground(() => {
     // Let onAuthStateChanged handle null broadcast (it does, I think?)
     await storage.removeItem('local:user');
     await storage.removeItem('local:isLoggedInGlobal');
-    messaging.sendMessage('auth:stateChanged');
+    messaging.sendMessage('auth:stateChanged', null);
     await signOut(auth);
   });
 
