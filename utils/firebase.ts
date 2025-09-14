@@ -37,7 +37,7 @@ export function isFirebaseUser(user: any): user is User {
   );
 }
 
-// Key for the reccomendation
+// Key for the recommendation
 export function generateUUID() {
   return crypto.randomUUID(); // Available in modern browsers
 }

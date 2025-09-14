@@ -4,7 +4,7 @@ export type SerializedUser = Pick<
   User,
   'uid' | 'email' | 'displayName' | 'photoURL'
 >;
-export type VideoReccomendation = {
+export type VideoRecommendation = {
   videoId: string | null;
   to: string | null;
   thumbnailUrl: string | null;

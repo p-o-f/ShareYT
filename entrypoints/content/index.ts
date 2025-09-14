@@ -81,7 +81,7 @@ export default defineContentScript({
         const targetEmail = '';
 
         // Have the background call the cloud function for us
-        messaging.sendMessage('reccomend:video', {
+        messaging.sendMessage('recommend:video', {
           videoId,
           to: targetEmail,
           thumbnailUrl,
