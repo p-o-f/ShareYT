@@ -6,6 +6,10 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
 } from 'https://www.gstatic.com/firebasejs/11.9.1/firebase-auth.js';
+import {
+  initializeAppCheck,
+  ReCaptchaV3Provider,
+} from 'https://www.gstatic.com/firebasejs/11.9.1/firebase-app-check.js';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyD_YP_cl_lI4eCHTWzuN5_Bjiyb_Y4z7TQ',
@@ -18,6 +22,16 @@ const firebaseConfig = {
 };
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+
+// 👇 Enable debug token
+// This has to be set *before* calling initializeAppCheck
+// self.FIREBASE_APPCHECK_DEBUG_TOKEN = '...'; // DO NOT COMMIT THIS LINE
+
+// // Initialize App Check with reCAPTCHA v3
+// initializeAppCheck(app, {
+//   provider: new ReCaptchaV3Provider('6LfCtZkrAAAAAGg8ZFkwF3IwNxZAeag3UA36KpKC'),
+//   isTokenAutoRefreshEnabled: true,
+// });
 
 // This code runs inside of an iframe in the extension's offscreen document.
 // This gives you a reference to the parent frame, i.e. the offscreen document.
