@@ -1,4 +1,4 @@
-import { VideoReccomendation, SerializedUser } from '@/types/types';
+import { VideoRecommendation, SerializedUser } from '@/types/types';
 import { defineExtensionMessaging } from '@webext-core/messaging';
 
 interface MessagingProtocol {
@@ -14,7 +14,7 @@ interface MessagingProtocol {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   'auth:chromeOffscreen': () => Promise<any>;
   // content->background
-  'reccomend:video': (recc: VideoReccomendation | null) => void;
+  'recommend:video': (recc: VideoRecommendation | null) => void;
 }
 
 export const messaging = defineExtensionMessaging<MessagingProtocol>();

@@ -152,8 +152,8 @@ export default defineBackground(() => {
     return summary;
   });
 
-  messaging.onMessage('reccomend:video', ({ data }) => {
-    console.log('in reccomending video backgroudn');
+  messaging.onMessage('recommend:video', ({ data }) => {
+    console.log('in recommending video background');
     const suggestVideo = httpsCallable(functions, 'suggestVideo');
     suggestVideo({
       videoId: data!.videoId,
