@@ -24,22 +24,58 @@ const oauthClientId =
   '820825199730-3e2tk7rb9pq2d4uao2j16p5hr2p1usi6.apps.googleusercontent.com';
 
 const performChromeLogin = async () => {
+  /* OLD CODE, BUT IMPORTANT COMMENTS BELOW
+  the following code is now deprecated because, for whatever reason, using await firebaseAuth() has two problems: 1) auth token is not persistent in all contexts (and seemingly impossible to extract for a manual bypass)
+  AND... 
+  2) it doesn't trigger the onAuthStateChanged listener in this background script (unknown reason!), which is a problem because it's necessary for Firestore security rules to "pick up" that the user has been auth'd
+  so that db requests can be used in the dashboard's script (e.g. read request for recommend:video)
+  - that is to say, doing "manual work that should be handled by onAuthStateChanged" won't cut it since the Firestore rules still wouldn't see the user as auth'd anyway
+    - also, since the token is not reliably persisted in all contexts --> manual extraction or bypass attempts futile --> and Chrome seems like a black box in seeing where the token persists and where it doesn't
+
+  NOTE:
+  the performChromeLogin() and performFirefoxGoogleLogin() functions are still separate for future maintainability's sake, even though they can now be consolidated into one function
+  - I'm not sure if future mv2 -> mv3 updates or whatever can mess it up, so keeping them separate for now
+
+        const user = await firebaseAuth();
+
+        const serialized = user ? toSerializedUser(user) : null;
+        if (!serialized) {
+          console.error('serializeUser: user is null, cannot serialize.');
+        }
+
+        // TODO: fix the below
+        // manual work that should be handled by onAuthStateChanged but isn't for some reason
+        await storage.setItem('local:user', serialized);
+        messaging.sendMessage('auth:stateChanged', serialized);
+        // end manual work that should be handled by onAuthStateChanged
+        // TODO: ^no need to return anything if it should were handled by onAuthStateChanged, but it isn't...
+
+        return serialized;
+  */
   console.log('performChromeLogin() called in background script');
-  const user = await firebaseAuth();
+  try {
+    const nonce = Math.floor(Math.random() * 1000000);
+    const redirectUri = browser.identity.getRedirectURL();
+    console.log('Redirect URI:', redirectUri);
 
-  const serialized = user ? toSerializedUser(user) : null;
-  if (!serialized) {
-    console.error('serializeUser: user is null, cannot serialize.');
+    const responseUrl = await browser.identity.launchWebAuthFlow({
+      url: `https://accounts.google.com/o/oauth2/v2/auth?response_type=id_token&nonce=${nonce}&scope=openid%20profile%20email&client_id=${oauthClientId}&redirect_uri=${redirectUri}`,
+      interactive: true,
+    });
+
+    if (!responseUrl) {
+      throw new Error('OAuth2 redirect failed : no response URL received.');
+    }
+
+    const idToken = responseUrl.split('id_token=')[1].split('&')[0];
+    const credential = GoogleAuthProvider.credential(idToken);
+    const result = await signInWithCredential(auth, credential);
+    // onAuthStateChanged listener in the background script will handle the update
+    return result;
+  } catch (err) {
+    console.log(err);
+    return null;
   }
-
-  // TODO: fix the below
-  // manual work that should be handled by onAuthStateChanged but isn't for some reason
-  await storage.setItem('local:user', serialized);
-  messaging.sendMessage('auth:stateChanged', serialized);
-  // end manual work that should be handled by onAuthStateChanged
-  // TODO: ^no need to return anything if it should were handled by onAuthStateChanged, but it isn't...
-
-  return serialized;
 };
 
 const performFirefoxGoogleLogin = async () => {
@@ -72,31 +108,13 @@ const performFirefoxGoogleLogin = async () => {
 
 export default defineBackground(() => {
   onAuthStateChanged(auth, async (user) => {
-    // this handles the updates for performFirefoxGoogleLogin();
-    // it should also handle it for chrome login, but doesn't for some reason?
+    // This handles the updates for performFirefoxGoogleLogin(); and performChromeLogin();
     console.log('Auth state changed in background:', user?.displayName);
 
     const serialized = user ? toSerializedUser(user) : null;
 
     await storage.setItem('local:user', serialized);
     messaging.sendMessage('auth:stateChanged', serialized);
-
-    /*
-    // TODO / IMPORTANT !!!! for yb and rc:
-
-    see this line below? VVVV
-        await storage.setItem('local:isLoggedInGlobal', 1); 
-
-    it  seems to run NO MATTER what in both chrome AND firefox.... like, before the user has even logged in
-    yet we still have to do:
-  await storage.setItem('local:user', serialized);
-  messaging.sendMessage('auth:stateChanged', serialized);
-    ^ those two lines, in the chrome login function?? no idea why - if these 2x lines are excluded, we get error 400
-    (i verified this in testing by console.log() and changing isLoggedInGlobal to random values like 42 or 27 to see scope)
-
-    // also, console.logging in this area (onAuthStateChanged) gives error 400? like wtf? but setting storage works... weird...
-
-    */
   });
 
   messaging.onMessage('auth:getUser', async () => {
@@ -107,34 +125,14 @@ export default defineBackground(() => {
   });
 
   messaging.onMessage('auth:signIn', async () => {
-    /*
-          const user = await firebaseAuth();
-
-          const serialized = user ? toSerializedUser(user) : null;
-          if (!serialized) {
-            console.error('serializeUser: user is null, cannot serialize.');
-          }
-
-          // TODO: fix the below
-          // manual work that should be handled by onAuthStateChanged but isn't for some reason
-          await storage.setItem('local:user', serialized);
-          messaging.sendMessage('auth:stateChanged', serialized);
-          // end manual work that should be handled by onAuthStateChanged
-
-          // TODO: no need to return anything
-          return serialized;
-    */
-    //wait performChromeLogin(); // ^ this function just does the above code, but it is here for clarity's sake of making it more obvious what is happening
-    // TODO remove the giant blurb ^^ of /* */ if everything works as before (which it should, I'm just paranoid so putting this reminder here lol)
-    const user = await performChromeLogin();
+    // The onAuthStateChanged listener in the background script handles the update
+    await performChromeLogin();
     await storage.setItem('local:isLoggedInGlobal', 1);
-    return user;
   });
 
   messaging.onMessage('auth:signInFirefox', async () => {
-    // The onAuthStateChanged listener in the background script should handle the update (it does)
+    // The onAuthStateChanged listener in the background script handles the update
     await performFirefoxGoogleLogin();
-
     await storage.setItem('local:isLoggedInGlobal', 1);
   });
 
