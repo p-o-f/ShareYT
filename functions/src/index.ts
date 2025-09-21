@@ -101,6 +101,22 @@ exports.suggestVideo = functions.https.onCall(async (data, context) => {
       );
     }
 
+    // Check for duplicate suggestions -- TODO verify functionality
+    const existingSuggestionSnapshot = await db
+      .collection('suggestedVideos')
+      .where('videoId', '==', videoId)
+      .where('from', '==', context.auth.uid)
+      .where('to', '==', toUid)
+      .limit(1)
+      .get();
+
+    if (!existingSuggestionSnapshot.empty) {
+      throw new functions.https.HttpsError(
+        'already-exists',
+        'This video has already been suggested to this user.',
+      );
+    }
+
     // Add video suggestion
     const suggestionRef = await db.collection('suggestedVideos').add({
       videoId,
