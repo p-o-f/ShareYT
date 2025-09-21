@@ -179,7 +179,8 @@ export default defineUnlistedScript(async () => {
 
     async function sendFriendRequest() {
       const targetEmail = emailInput.value.trim().toLowerCase();
-      if (!targetEmail) return alert('Please enter an email.');
+      if (!targetEmail || !targetEmail.includes('@gmail.com'))
+        return alert('Please enter a valid Gmail email.');
       if (targetEmail === userEmail.toLowerCase())
         return alert("You can't send a request to yourself!");
 
@@ -191,7 +192,9 @@ export default defineUnlistedScript(async () => {
         : null;
 
       if (uidOther === null) {
-        return alrt('Other uid not found');
+        return alert(
+          'The email you entered does not have a ShareYT uid, please tell them to register with ShareYT first!',
+        );
       }
 
       await addDoc(collection(db, 'friendRequests'), {
