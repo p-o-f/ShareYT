@@ -8,6 +8,7 @@ import {
   serverTimestamp,
   query,
   where,
+  getDocs,
 } from 'firebase/firestore';
 import { hashEmail, functions } from '../utils/firebase';
 import { httpsCallable } from 'firebase/functions';
@@ -196,6 +197,20 @@ export default defineUnlistedScript(async () => {
           'The email you entered does not have a ShareYT uid, please tell them to register with ShareYT first!',
         );
       }
+
+      // Check if a request has already been sent
+      const q = query(
+        collection(db, 'friendRequests'),
+        where('to', '==', uidOther),
+        where('from', '==', userId),
+      );
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        return alert(`You have already sent a request to ${targetEmail}!`);
+      }
+
+      // Check if that friend has already been added (TODO)
 
       await addDoc(collection(db, 'friendRequests'), {
         from: userId,
