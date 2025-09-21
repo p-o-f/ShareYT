@@ -179,12 +179,12 @@ export default defineUnlistedScript(async () => {
 
     async function sendFriendRequest() {
       const targetEmail = emailInput.value.trim().toLowerCase();
+      console.log('EMAILS', targetEmail);
       if (!targetEmail || !targetEmail.includes('@gmail.com'))
         return alert('Please enter a valid Gmail email.');
       if (targetEmail === userEmail.toLowerCase())
         return alert("You can't send a request to yourself!");
 
-      // TODO: make sure the hash lines up with cloud function
       const uidRef = doc(db, 'emailHashes', hashEmail(targetEmail));
       const otherUserIdDoc = await getDoc(uidRef);
       const uidOther = otherUserIdDoc.exists()
@@ -204,8 +204,10 @@ export default defineUnlistedScript(async () => {
         createdAt: serverTimestamp(),
       });
 
-      console.log(`Friend request sent to ${targetEmail}`);
+      let success = `A friend request was sent to ${targetEmail}`;
+      console.log(success);
       emailInput.value = '';
+      return alert(success);
     }
 
     sendBtn?.addEventListener('click', sendFriendRequest);
