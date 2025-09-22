@@ -172,7 +172,6 @@ export default defineUnlistedScript(async () => {
 
     // Watch friend requests
     watchFriendRequests();
-    watchFriends(userId);
 
     // ---------------------------
     // SEND FRIEND REQUEST
