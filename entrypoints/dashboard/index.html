@@ -120,6 +120,53 @@
         font-size: 0.8rem;
         color: #999;
       }
+
+    .dashboard-container {
+        display: flex;
+        height: calc(100vh - 70px); /* subtract header height */
+      }
+
+      .friends-panel {
+        width: 280px;
+        background-color: #ffffff;
+        border-right: 1px solid #ddd;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .panel-title {
+        padding: 1rem;
+        font-weight: bold;
+        color: #3b4cca;
+        border-bottom: 1px solid #ddd;
+      }
+
+      .friends-list {
+        flex: 1;
+        overflow-y: auto; /* infinite scrolling effect */
+        padding: 0.5rem;
+      }
+
+      .friend-tile {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem;
+        background: #f9f9f9;
+        border-radius: 6px;
+        margin-bottom: 0.5rem;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+      .friend-tile:hover {
+        background: #eef2fb;
+      }
+      .friend-tile img {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+      }
+
     </style>
   </head>
   <body>
@@ -130,6 +177,17 @@
         <span id="profile-username"></span>
       </div>
     </header>
+
+  <div class="dashboard-container">
+    <!-- LEFT FRIENDS PANEL -->
+    <aside class="friends-panel">
+    <div class="panel-title" style="font-size: 18px; text-align: center;">
+      👬 My Friends List
+    </div>
+      <div class="friends-list" id="friends-list">
+        <!-- Friend tiles get injected here -->
+      </div>
+    </aside>
 
     <main>
       <div class="greeting">
@@ -181,7 +239,6 @@
       </section>
     </main>
 
-    <footer>ShareYT – Video sharing made simple.</footer>
 
     <script type="module">
       const script = document.createElement('script');
