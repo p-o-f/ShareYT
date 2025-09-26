@@ -65,12 +65,45 @@ export default defineUnlistedScript(async () => {
 
       // Accept button → add to friends collection + remove request
       card.querySelector('.accept-btn').addEventListener('click', async () => {
-        acceptFriendRequest({ requestId: requestDocId });
+        try {
+          // Call Cloud Function
+          const result = await acceptFriendRequest({ requestId: requestDocId });
+          const { friendshipId, friendOne, friendTwo } = result.data;
+
+          console.log(
+            'Friendship created:',
+            friendshipId,
+            friendOne,
+            friendTwo,
+          );
+
+          // Determine the UID of the new friend
+          const friendId = friendOne === userId ? friendTwo : friendOne;
+
+          // Only add if not already present
+          if (!friends[friendId]) {
+            const profile = await getUserProfile({ uid: friendId });
+            friends[friendId] = profile.data;
+            render(); // update friends list immediately
+          }
+
+          // Remove the card immediately from UI for seamlessness
+          card.remove();
+        } catch (err) {
+          console.error('Failed to accept friend request:', err);
+          alert('Something went wrong accepting this request.');
+        }
       });
 
       // Reject button → just delete request
       card.querySelector('.reject-btn').addEventListener('click', async () => {
-        await deleteDoc(doc(db, 'friendRequests', requestDocId));
+        try {
+          await deleteDoc(doc(db, 'friendRequests', requestDocId));
+          card.remove(); // remove the card immediately
+        } catch (err) {
+          console.error('Failed to reject friend request:', err);
+          alert('Something went wrong rejecting this request.');
+        }
       });
 
       return card;
@@ -296,16 +329,28 @@ export default defineUnlistedScript(async () => {
         );
       }
 
-      // Check if a request has already been sent
-      const q = query(
+      // Check if a request has already been sent in either direction
+      const q1 = query(
         collection(db, 'friendRequests'),
-        where('to', '==', uidOther),
         where('from', '==', userId),
+        where('to', '==', uidOther),
       );
-      const querySnapshot = await getDocs(q);
 
-      if (!querySnapshot.empty) {
-        return alert(`You have already sent a request to ${targetEmail}!`);
+      const q2 = query(
+        collection(db, 'friendRequests'),
+        where('from', '==', uidOther),
+        where('to', '==', userId),
+      );
+
+      const [snapshot1, snapshot2] = await Promise.all([
+        getDocs(q1),
+        getDocs(q2),
+      ]);
+
+      if (!snapshot1.empty || !snapshot2.empty) {
+        return alert(
+          `A friend request already exists between you and ${targetEmail}!`,
+        );
       }
 
       // Check if that friend has already been added and is now part of the friends list
@@ -318,7 +363,6 @@ export default defineUnlistedScript(async () => {
       }
 
       // Send the friend request
-
       await addDoc(collection(db, 'friendRequests'), {
         from: userId,
         to: uidOther,
