@@ -47,9 +47,28 @@ export const acceptFriendRequest = functions.https.onCall(
       );
     }
 
+    if (!from || from === to) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'Invalid request data',
+      );
+    }
+
     const friendshipId = [from, to].sort().join('_');
+    const friendshipRef = admin
+      .firestore()
+      .collection('friendships')
+      .doc(friendshipId);
 
     await admin.firestore().runTransaction(async (t) => {
+      const friendshipSnap = await t.get(friendshipRef);
+      if (friendshipSnap.exists) {
+        // Already friends → just clean up the request - avoids race condition problem if two requests are accepted simultaneously
+        t.delete(reqRef);
+        return;
+      }
+
+      // Create friendship + delete request atomically
       t.delete(reqRef);
       t.set(admin.firestore().collection('friendships').doc(friendshipId), {
         friendOne: from,
@@ -57,6 +76,8 @@ export const acceptFriendRequest = functions.https.onCall(
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
     });
+
+    return { friendshipId, friendOne: from, friendTwo: to };
   },
 );
 
