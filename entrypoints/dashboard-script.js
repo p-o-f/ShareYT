@@ -10,10 +10,11 @@ import {
   where,
   getDocs,
 } from 'firebase/firestore';
-import { hashEmail, functions } from '../utils/firebase';
+import { db, hashEmail, functions } from '../utils/firebase';
 import { httpsCallable } from 'firebase/functions';
 
 const acceptFriendRequest = httpsCallable(functions, 'acceptFriendRequest');
+const getUserProfile = httpsCallable(functions, 'getUserProfile');
 
 export default defineUnlistedScript(async () => {
   console.log(
@@ -73,6 +74,98 @@ export default defineUnlistedScript(async () => {
       });
 
       return card;
+    }
+
+    // ---------------------------
+    // RENDER FRIEND TILE
+    // ---------------------------
+    function renderFriendTile(friendData) {
+      //console.log('Calling renderFriendTile with friend tile for:', friendData);
+      const html = `
+        <div class="friend-tile">
+          <img src="${friendData.photoURL || 'https://www.gravatar.com/avatar?d=mp'}" alt="Profile Picture" />
+          <span>${friendData.displayName || friendData.email}</span>
+        </div>
+      `;
+      const temp = document.createElement('div');
+      temp.innerHTML = html.trim();
+      return temp.firstChild;
+    }
+
+    // ---------------------------
+    // WATCH FRIENDSHIPS
+    // ---------------------------
+    function watchFriendships(userId) {
+      //console.log('Calling watchFriendships with userId:', userId);
+      const friendsList = document.getElementById('friends-list');
+      // Use an object to store friend data, keyed by UID, to prevent duplicates
+      const friends = {};
+
+      const render = () => {
+        friendsList.innerHTML = '';
+        Object.values(friends).forEach((friendData) => {
+          if (friendData) {
+            // Ensure friendData is not null/undefined
+            friendsList.appendChild(renderFriendTile(friendData));
+          }
+        });
+      };
+
+      const handleSnapshot = (snapshot, getFriendId) => {
+        const changes = snapshot.docChanges();
+        let needsRender = false;
+
+        // Use a promise to wait for all profile lookups in this batch of changes
+        const promises = changes.map(async (change) => {
+          const docData = change.doc.data();
+          const friendId = getFriendId(docData);
+
+          if (change.type === 'removed') {
+            delete friends[friendId];
+            needsRender = true;
+          } else {
+            // 'added' or 'modified'
+            try {
+              // Only fetch profile if we don't already have it
+              if (!friends[friendId]) {
+                const result = await getUserProfile({ uid: friendId });
+                friends[friendId] = result.data;
+                needsRender = true;
+              }
+            } catch (e) {
+              console.error(`Failed to get profile for ${friendId}`, e);
+            }
+          }
+        });
+
+        // After all changes in this snapshot are processed, render if needed
+        Promise.all(promises).then(() => {
+          if (needsRender) {
+            render();
+          }
+        });
+      };
+
+      const q1 = query(
+        collection(db, 'friendships'),
+        where('friendOne', '==', userId),
+      );
+      const unsub1 = onSnapshot(q1, (snap) =>
+        handleSnapshot(snap, (data) => data.friendTwo),
+      );
+
+      const q2 = query(
+        collection(db, 'friendships'),
+        where('friendTwo', '==', userId),
+      );
+      const unsub2 = onSnapshot(q2, (snap) =>
+        handleSnapshot(snap, (data) => data.friendOne),
+      );
+
+      return () => {
+        unsub1();
+        unsub2();
+      };
     }
 
     // ---------------------------
@@ -173,6 +266,9 @@ export default defineUnlistedScript(async () => {
     // Watch friend requests
     watchFriendRequests();
 
+    // Watch friendships
+    watchFriendships(userId);
+
     // ---------------------------
     // SEND FRIEND REQUEST
     // ---------------------------
@@ -211,7 +307,7 @@ export default defineUnlistedScript(async () => {
         return alert(`You have already sent a request to ${targetEmail}!`);
       }
 
-      // Check if that friend has already been added (TODO)
+      // Check if that friend has already been added and is now part of the friends list (TODO)
 
       await addDoc(collection(db, 'friendRequests'), {
         from: userId,

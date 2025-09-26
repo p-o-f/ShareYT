@@ -52,7 +52,8 @@ export const acceptFriendRequest = functions.https.onCall(
     await admin.firestore().runTransaction(async (t) => {
       t.delete(reqRef);
       t.set(admin.firestore().collection('friendships').doc(friendshipId), {
-        users: [from, to],
+        friendOne: from,
+        friendTwo: to,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
     });
@@ -135,5 +136,24 @@ exports.suggestVideo = functions.https.onCall(async (data, context) => {
       'unknown',
       'An error occurred while suggesting the video.',
     );
+  }
+});
+
+export const getUserProfile = functions.https.onCall(async (data) => {
+  const { uid } = data;
+  if (!uid) {
+    throw new functions.https.HttpsError('invalid-argument', 'Missing uid');
+  }
+
+  try {
+    const userRecord = await admin.auth().getUser(uid);
+    return {
+      displayName: userRecord.displayName,
+      email: userRecord.email,
+      photoURL: userRecord.photoURL,
+    };
+  } catch (error) {
+    console.error('Error fetching user data:', error);
+    throw new functions.https.HttpsError('not-found', 'User not found');
   }
 });
