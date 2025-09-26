@@ -307,7 +307,16 @@ export default defineUnlistedScript(async () => {
         return alert(`You have already sent a request to ${targetEmail}!`);
       }
 
-      // Check if that friend has already been added and is now part of the friends list (TODO)
+      // Check if that friend has already been added and is now part of the friends list
+      const friendshipId = [userId, uidOther].sort().join('_');
+      const friendshipRef = doc(db, 'friendships', friendshipId);
+      const friendshipDoc = await getDoc(friendshipRef);
+
+      if (friendshipDoc.exists()) {
+        return alert(`${targetEmail} is already your friend!`);
+      }
+
+      // Send the friend request
 
       await addDoc(collection(db, 'friendRequests'), {
         from: userId,
