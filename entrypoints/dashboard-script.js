@@ -115,14 +115,29 @@ export default defineUnlistedScript(async () => {
     function renderFriendTile(friendData) {
       //console.log('Calling renderFriendTile with friend tile for:', friendData);
       const html = `
-        <div class="friend-tile">
-          <img src="${friendData.photoURL || 'https://www.gravatar.com/avatar?d=mp'}" alt="Profile Picture" />
-          <span>${friendData.displayName || friendData.email}</span>
+        <div class="friend-tile" style="display: flex; align-items: center; justify-content: space-between; padding: 8px 0;">
+          <div style="display: flex; align-items: center;">
+            <img src="${
+              friendData.photoURL || 'https://www.gravatar.com/avatar?d=mp'
+            }" alt="Profile Picture" style="width: 32px; height: 32px; border-radius: 50%; margin-right: 12px;" />
+            <span>${friendData.displayName || friendData.email}</span>
+          </div>
+          <button class="remove-friend-btn" style="background-color: #f44336; color: white; border: none; border-radius: 4px; width: 24px; height: 24px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; padding: 0; font-size: 14px;">X</button>
         </div>
       `;
       const temp = document.createElement('div');
       temp.innerHTML = html.trim();
-      return temp.firstChild;
+      const tile = temp.firstChild;
+
+      tile
+        .querySelector('.remove-friend-btn')
+        .addEventListener('click', (e) => {
+          e.stopPropagation();
+          // For now, do nothing. In the future, this will remove the friend.
+          console.log('Remove friend button clicked for:', friendData.email);
+        });
+
+      return tile;
     }
 
     // ---------------------------
