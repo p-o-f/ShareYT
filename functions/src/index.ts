@@ -60,17 +60,18 @@ export const acceptFriendRequest = functions.https.onCall(
       .collection('friendships')
       .doc(friendshipId);
 
-    await admin.firestore().runTransaction(async (t) => {
-      const friendshipSnap = await t.get(friendshipRef);
-      if (friendshipSnap.exists) {
-        // Already friends → just clean up the request - avoids race condition problem if two requests are accepted simultaneously
-        t.delete(reqRef);
-        return;
-      }
+    const friendshipSnap = await friendshipRef.get();
+    if (friendshipSnap.exists) {
+      // Already friends, just clean up the request
+      await reqRef.delete();
+      // Return the existing friendship info
+      return { friendshipId, friendOne: from, friendTwo: to };
+    }
 
+    await admin.firestore().runTransaction(async (t) => {
       // Create friendship + delete request atomically
       t.delete(reqRef);
-      t.set(admin.firestore().collection('friendships').doc(friendshipId), {
+      t.set(friendshipRef, {
         friendOne: from,
         friendTwo: to,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
