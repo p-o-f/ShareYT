@@ -225,13 +225,47 @@ export default defineUnlistedScript(async () => {
 
       const reqGrid = document.querySelector('.friend-requests-grid');
 
+      // Keep a map of current cards so we can apply only the incremental changes
+      const requestCards = new Map();
+
       onSnapshot(q, (snapshot) => {
-        // TODO: possibly diff it to make it faster
-        reqGrid.innerHTML = ''; // Clear old requests
-        snapshot.forEach((docSnap) => {
-          const data = docSnap.data();
-          reqGrid.appendChild(renderFriendRequestCard(docSnap.id, data));
+        // Use docChanges to process only the changes and avoid rebuilding the whole grid
+        const addedFrag = document.createDocumentFragment();
+
+        snapshot.docChanges().forEach((change) => {
+          const id = change.doc.id;
+          const data = change.doc.data();
+
+          if (change.type === 'removed') {
+            const existing = requestCards.get(id);
+            if (existing) {
+              existing.remove();
+              requestCards.delete(id);
+            }
+            return;
+          }
+
+          if (change.type === 'added') {
+            const card = renderFriendRequestCard(id, data);
+            requestCards.set(id, card);
+            addedFrag.appendChild(card);
+            return;
+          }
+
+          if (change.type === 'modified') {
+            // Replace the existing card with a newly rendered card for simplicity
+            const existing = requestCards.get(id);
+            const newCard = renderFriendRequestCard(id, data);
+            requestCards.set(id, newCard);
+            if (existing && existing.parentNode) {
+              existing.parentNode.replaceChild(newCard, existing);
+            } else {
+              addedFrag.appendChild(newCard);
+            }
+          }
         });
+
+        if (addedFrag.childNodes.length) reqGrid.appendChild(addedFrag);
       });
     }
 
