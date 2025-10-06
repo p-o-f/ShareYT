@@ -9,6 +9,19 @@ import { auth } from '../../utils/firebase';
 import { firebaseAuth } from './offscreenInteraction';
 import { SerializedUser } from '@/types/types';
 import { summarizeVideo } from './ai';
+import {
+  collection,
+  onSnapshot,
+  doc,
+  deleteDoc,
+  getDoc,
+  addDoc,
+  serverTimestamp,
+  query,
+  where,
+  getDocs,
+} from 'firebase/firestore';
+import { db, hashEmail, functions } from '../../utils/firebase';
 import { httpsCallable } from 'firebase/functions';
 
 function toSerializedUser(user: User): SerializedUser {
