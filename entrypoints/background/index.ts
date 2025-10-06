@@ -120,6 +120,7 @@ const performFirefoxGoogleLogin = async () => {
 };
 
 export default defineBackground(() => {
+  // ^ Executed when background is loaded
   onAuthStateChanged(auth, async (user) => {
     // This handles the updates for performFirefoxGoogleLogin(); and performChromeLogin();
     console.log('Auth state changed in background:', user?.displayName);
