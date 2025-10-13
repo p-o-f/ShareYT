@@ -20,6 +20,8 @@ import {
   query,
   where,
   getDocs,
+  DocumentData,
+  QuerySnapshot,
 } from 'firebase/firestore';
 import { db, hashEmail, functions } from '../../utils/firebase';
 import { httpsCallable } from 'firebase/functions';
