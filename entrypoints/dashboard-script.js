@@ -377,7 +377,6 @@ export default defineUnlistedScript(async () => {
           'The email you entered does not have a ShareYT uid, please tell them to register with ShareYT first!',
         );
       }
-
       // Check if a request has already been sent in either direction
       const q1 = query(
         collection(db, 'friendRequests'),
@@ -404,11 +403,18 @@ export default defineUnlistedScript(async () => {
 
       // Check if that friend has already been added and is now part of the friends list
       const friendshipId = [userId, uidOther].sort().join('_');
-      const friendshipRef = doc(db, 'friendships', friendshipId);
-      const friendshipDoc = await getDoc(friendshipRef);
+      try {
+        const friendshipRef = doc(db, 'friendships', friendshipId);
+        const friendshipDoc = await getDoc(friendshipRef);
 
-      if (friendshipDoc.exists()) {
-        return alert(`${targetEmail} is already your friend!`);
+        if (friendshipDoc.exists()) {
+          return alert(`${targetEmail} is already your friend!`);
+        }
+      } catch (e) {
+        console.error(
+          'Error checking friendship: most likely due to no read access (userId and uidOther are both not in any documents in the collection)',
+          e,
+        );
       }
 
       // Send the friend request
