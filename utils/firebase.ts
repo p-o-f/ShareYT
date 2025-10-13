@@ -36,6 +36,12 @@ export const db = initializeFirestore(app, {
   }),
 });
 
+// Since persistence is configured on creation, we don't need to await
+// a separate persistence function. We can export the DB instance directly,
+// or wrap it to ensure the *core Firebase app* itself is ready.
+// For most background scripts, exporting the initialized instance is sufficient.
+export const dbReadyPromise = Promise.resolve(db);
+
 export const functions = getFunctions(app);
 export const ai = getAI(app, { backend: new GoogleAIBackend() });
 

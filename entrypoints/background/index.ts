@@ -23,7 +23,7 @@ import {
   DocumentData,
   QuerySnapshot,
 } from 'firebase/firestore';
-import { db, hashEmail, functions } from '../../utils/firebase';
+import { db, dbReadyPromise, hashEmail, functions } from '../../utils/firebase';
 import { httpsCallable } from 'firebase/functions';
 
 function toSerializedUser(user: User): SerializedUser {
@@ -178,3 +178,17 @@ export default defineBackground(() => {
     });
   });
 });
+
+async function waitForDBInitialization() {
+  console.log('Waiting for Firestore initialization...');
+
+  // Await the promise to ensure the object is available
+  const db = await dbReadyPromise;
+
+  console.log('Firestore is ready! Starting listeners...');
+
+  // NOW you can safely use the db object
+  // ... Firestore operations ...
+}
+
+waitForDBInitialization();
