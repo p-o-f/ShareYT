@@ -5,6 +5,12 @@ import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { sha256 } from 'js-sha256';
 import { getFunctions } from 'firebase/functions';
+import {
+  // imports for Firestore initialization and multi-tab persistence
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+} from 'firebase/firestore';
 
 const firebaseConfig: FirebaseOptions = {
   apiKey: 'AIzaSyD_YP_cl_lI4eCHTWzuN5_Bjiyb_Y4z7TQ',
@@ -18,7 +24,18 @@ const firebaseConfig: FirebaseOptions = {
 
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+
+export const db = initializeFirestore(app, {
+  // 1. Specify the local cache (IndexedDB)
+  localCache: persistentLocalCache({
+    // 2. Enable multi-tab coordination
+    tabManager: persistentMultipleTabManager(),
+
+    // Optional: You can set cacheSizeBytes here if needed,
+    // but the default is usually fine for most apps.
+  }),
+});
+
 export const functions = getFunctions(app);
 export const ai = getAI(app, { backend: new GoogleAIBackend() });
 

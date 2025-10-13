@@ -8,6 +8,12 @@ setGlobalOptions({ maxInstances: 10 });
 admin.initializeApp();
 const db = admin.firestore();
 
+/*COMMAND TO DEPLOY TO FIRESTORE:
+
+firebase deploy --only functions
+
+*/
+
 export const createEmailHash = functions.auth.user().onCreate(async (user) => {
   if (!user.email || !user.uid) return;
 
