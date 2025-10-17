@@ -80,6 +80,7 @@ export const acceptFriendRequest = functions.https.onCall(
       t.set(friendshipRef, {
         friendOne: from,
         friendTwo: to,
+        participants: [from, to],
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
     });
