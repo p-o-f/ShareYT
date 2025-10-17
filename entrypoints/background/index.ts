@@ -131,6 +131,7 @@ export default defineBackground(() => {
 
     await storage.setItem('local:user', serialized);
     messaging.sendMessage('auth:stateChanged', serialized);
+    loadFriendships(user?.uid);
   });
 
   messaging.onMessage('auth:getUser', async () => {
@@ -186,9 +187,46 @@ async function waitForDBInitialization() {
   const db = await dbReadyPromise;
 
   console.log('Firestore is ready! Starting listeners...');
+  const user = await storage.getItem('local:user');
 
   // NOW you can safely use the db object
   // ... Firestore operations ...
 }
 
 waitForDBInitialization();
+// ✅ Hybrid caching for friendships
+let friendshipsMap = new Map();
+
+async function loadFriendships(userId: unknown) {
+  console.log('calling loadFriendships with userId:', userId);
+
+  const friendshipsRef = collection(db, 'friendships');
+  const friendshipsQuery = query(
+    friendshipsRef,
+    where('participants', 'array-contains', userId),
+  );
+  console.log('Set up friendships query for userId:', userId);
+
+  const cached = await storage.getItem('local:friendships');
+  if (cached) {
+    console.log('Loaded friendships from local cache');
+    //friendshipsMap = new Map(cached.friendships.map((f) => [f.id, f]));
+  }
+
+  onSnapshot(friendshipsQuery, async (snapshot) => {
+    snapshot.docChanges().forEach((change) => {
+      const docId = change.doc.id;
+      const data = { id: docId, ...change.doc.data() };
+
+      if (change.type === 'added' || change.type === 'modified') {
+        friendshipsMap.set(docId, data);
+      } else if (change.type === 'removed') {
+        friendshipsMap.delete(docId);
+      }
+    });
+
+    const friendshipsArray = Array.from(friendshipsMap.values());
+    await storage.setItem('local:friendships', friendshipsArray);
+    console.log('Updated local cache:', friendshipsArray);
+  });
+}

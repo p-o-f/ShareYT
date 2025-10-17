@@ -1,16 +1,15 @@
 import { getAI, GoogleAIBackend } from 'firebase/ai';
-import { FirebaseOptions, initializeApp } from 'firebase/app';
+import { FirebaseOptions, initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, User } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
-import { sha256 } from 'js-sha256';
-import { getFunctions } from 'firebase/functions';
 import {
-  // imports for Firestore initialization and multi-tab persistence
+  getFirestore,
   initializeFirestore,
   persistentLocalCache,
   persistentMultipleTabManager,
 } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
+import { sha256 } from 'js-sha256';
+import { getFunctions } from 'firebase/functions';
 
 const firebaseConfig: FirebaseOptions = {
   apiKey: 'AIzaSyD_YP_cl_lI4eCHTWzuN5_Bjiyb_Y4z7TQ',
@@ -22,19 +21,22 @@ const firebaseConfig: FirebaseOptions = {
   measurementId: 'G-78R129K63L',
 };
 
-export const app = initializeApp(firebaseConfig);
+const appAlreadyInitialized = getApps().length > 0;
+export const app = appAlreadyInitialized
+  ? getApp()
+  : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
-export const db = initializeFirestore(app, {
-  // 1. Specify the local cache (IndexedDB)
-  localCache: persistentLocalCache({
-    // 2. Enable multi-tab coordination
-    tabManager: persistentMultipleTabManager(),
-
-    // Optional: You can set cacheSizeBytes here if needed,
-    // but the default is usually fine for most apps.
-  }),
-});
+export const db = appAlreadyInitialized // fixes the following error:
+  ? // [FirebaseError: initializeFirestore() has already been called with different options.
+    // To avoid this error, call initializeFirestore() with the same options as when it was originally called,
+    // or call getFirestore() to return the already initialized instance.] {
+    getFirestore(app)
+  : initializeFirestore(app, {
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager(),
+      }),
+    });
 
 // Since persistence is configured on creation, we don't need to await
 // a separate persistence function. We can export the DB instance directly,
