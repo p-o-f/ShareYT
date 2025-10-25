@@ -1,6 +1,6 @@
 import { getGenerativeModel } from 'firebase/ai';
 
-const model = getGenerativeModel(ai, { model: 'gemini-2.5-flash' });
+const model = getGenerativeModel(ai, { model: 'gemini-2.5-flash-lite' });
 
 export async function summarizeVideo(videoUrl: string) {
   const prompt =
