@@ -3,11 +3,11 @@ declare const clients: Clients;
 import { isFirebaseUser } from '@/utils/firebase';
 import { PublicPath } from 'wxt/browser';
 
-const OFFSCREEN_DOCUMENT_PATH = '/offscreen.html';
+export const OFFSCREEN_DOCUMENT_PATH = '/offscreen.html';
 let creatingOffscreenDocument: Promise<void> | null;
 // Chrome only allows for a single offscreenDocument. This is a helper function
 // that returns a boolean indicating if a document is already active.
-async function hasOffscreenDocument() {
+export async function hasOffscreenDocument() {
   // Check all windows controlled by the service worker to see if one
   // of them is the offscreen document with the given path
   return (await clients.matchAll()).some(
@@ -15,7 +15,7 @@ async function hasOffscreenDocument() {
   );
 }
 
-async function setupOffscreenDocument(path: PublicPath) {
+export async function ensureOffscreenDocument(path: PublicPath) {
   // If we do not have a document, we are already setup and can skip
   if (!(await hasOffscreenDocument())) {
     // create offscreen document
@@ -33,7 +33,7 @@ async function setupOffscreenDocument(path: PublicPath) {
   }
 }
 
-async function closeOffscreenDocument() {
+export async function closeOffscreenDocument() {
   if (!(await hasOffscreenDocument())) return;
   await browser.offscreen.closeDocument();
 }
@@ -55,7 +55,7 @@ async function getAuth() {
 
 export async function firebaseAuth() {
   try {
-    await setupOffscreenDocument(OFFSCREEN_DOCUMENT_PATH);
+    await ensureOffscreenDocument(OFFSCREEN_DOCUMENT_PATH);
     const auth = await getAuth();
     console.log('User Authenticated:', auth);
     return auth;

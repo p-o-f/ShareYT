@@ -16,6 +16,8 @@ interface MessagingProtocol {
   // Background->Offscreen messages
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   'auth:chromeOffscreen': () => Promise<any>;
+  // Background->Offscreen control messages
+  'offscreen:startListeners': (uid: string) => void;
 
   // content->background
   'recommend:video': (recc: VideoRecommendation | null) => void;

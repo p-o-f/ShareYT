@@ -6,7 +6,10 @@ import {
   GoogleAuthProvider,
 } from 'firebase/auth';
 import { auth } from '../../utils/firebase';
-import { firebaseAuth } from './offscreenInteraction';
+import {
+  ensureOffscreenDocument,
+  OFFSCREEN_DOCUMENT_PATH,
+} from './offscreenInteraction';
 import { SerializedUser } from '@/types/types';
 import { summarizeVideo } from './ai';
 import {
@@ -131,6 +134,12 @@ export default defineBackground(() => {
 
     await storage.setItem('local:user', serialized);
     messaging.sendMessage('auth:stateChanged', serialized);
+    // Ensure offscreen document exists when user is signed in so it can host long-lived listeners
+    if (user) {
+      await ensureOffscreenDocument(OFFSCREEN_DOCUMENT_PATH);
+      // Notify offscreen context to (re)start its Firestore listeners for this user
+      messaging.sendMessage('offscreen:startListeners', user.uid);
+    }
     loadFriendships(user?.uid);
   });
 
@@ -230,3 +239,8 @@ async function loadFriendships(userId: unknown) {
     console.log('Updated local cache:', friendshipsArray);
   });
 }
+function myFunction() {
+  console.log('Keep alive test: This message appears every 3 seconds.');
+}
+
+let myInterval = setInterval(myFunction, 3000);
