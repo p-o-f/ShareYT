@@ -278,10 +278,7 @@ export default defineUnlistedScript(async () => {
           ? `Shared by ${data.suggestedBy || 'Unknown'}`
           : `Sent to ${data.sentTo || 'Unknown'}`;
 
-      // const dateObj = data.suggestedTime?.toDate
-      //   ? data.createdAt.toDate()
-      //   : null;
-      const dateObj = data.suggestedTime?.toDate?.() ?? null;
+      const dateObj = data.timestamp?.toDate?.() ?? null;
 
       const formattedDate = dateObj
         ? dateObj.toLocaleDateString('en-US', {
