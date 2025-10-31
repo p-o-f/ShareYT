@@ -28,6 +28,58 @@ export const createEmailHash = functions.auth.user().onCreate(async (user) => {
   });
 });
 
+export const sendFriendRequest = functions.https.onCall(
+  async (data, context) => {
+    const { toUid } = data;
+    const fromUid = context.auth?.uid;
+
+    if (!fromUid) {
+      throw new functions.https.HttpsError('unauthenticated', 'Login required');
+    }
+
+    if (!toUid) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'Missing recipient UID.',
+      );
+    }
+
+    if (fromUid === toUid) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        "You can't send a request to yourself.",
+      );
+    }
+
+    const fromRef = db.collection('friendRequests').doc(fromUid);
+    const toRef = db.collection('friendRequests').doc(toUid);
+    const timestamp = admin.firestore.FieldValue.serverTimestamp();
+
+    try {
+      await db.runTransaction(async (t) => {
+        const toDoc = await t.get(toRef);
+
+        // Check if a request already exists in the other direction
+        if (toDoc.exists && toDoc.data()?.sent?.[fromUid]) {
+          throw new functions.https.HttpsError(
+            'already-exists',
+            'A friend request from this user is already pending.',
+          );
+        }
+
+        // Atomically update both users' request documents
+        t.set(fromRef, { sent: { [toUid]: timestamp } }, { merge: true });
+        t.set(toRef, { received: { [fromUid]: timestamp } }, { merge: true });
+      });
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error sending friend request:', error);
+      throw error; // Re-throw original HttpsError or a generic one
+    }
+  },
+);
+
 export const acceptFriendRequest = functions.https.onCall(
   async (data, context) => {
     const { requestId } = data;
@@ -36,60 +88,55 @@ export const acceptFriendRequest = functions.https.onCall(
       throw new functions.https.HttpsError('unauthenticated', 'Login required');
     }
 
-    const reqRef = admin
-      .firestore()
-      .collection('friendRequests')
-      .doc(requestId);
-    const reqSnap = await reqRef.get();
-    if (!reqSnap.exists) {
-      throw new functions.https.HttpsError('not-found', 'Request not found');
-    }
+    const fromUid = requestId; // In the new schema, the request ID is the sender's UID.
 
-    const { from, to } = reqSnap.data() || {};
-    if (to !== uidMe) {
-      throw new functions.https.HttpsError(
-        'permission-denied',
-        'Not your request',
-      );
-    }
-
-    if (!from || from === to) {
+    if (!fromUid || fromUid === uidMe) {
       throw new functions.https.HttpsError(
         'invalid-argument',
         'Invalid request data',
       );
     }
 
-    const friendshipId = [from, to].sort().join('_');
-    const friendshipRef = admin
-      .firestore()
-      .collection('friendships')
-      .doc(friendshipId);
+    const myRequestsRef = db.collection('friendRequests').doc(uidMe);
+    const theirRequestsRef = db.collection('friendRequests').doc(fromUid);
 
-    const friendshipSnap = await friendshipRef.get();
-    if (friendshipSnap.exists) {
-      // Already friends, just clean up the request
-      await reqRef.delete();
-      // Return the existing friendship info
-      return { friendshipId, friendOne: from, friendTwo: to };
-    }
+    const myFriendshipRef = db.collection('friendships').doc(uidMe);
+    const theirFriendshipRef = db.collection('friendships').doc(fromUid);
+
+    const timestamp = admin.firestore.FieldValue.serverTimestamp();
 
     await admin.firestore().runTransaction(async (t) => {
-      // Create friendship + delete request atomically
-      t.delete(reqRef);
-      t.set(friendshipRef, {
-        friendOne: from,
-        friendTwo: to,
-        participants: [from, to],
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      const myReqDoc = await t.get(myRequestsRef);
+      if (!myReqDoc.exists || !myReqDoc.data()?.received?.[fromUid]) {
+        throw new functions.https.HttpsError('not-found', 'Request not found.');
+      }
+
+      // 1. Remove the friend request from both sides
+      t.update(myRequestsRef, {
+        [`received.${fromUid}`]: admin.firestore.FieldValue.delete(),
       });
+      t.update(theirRequestsRef, {
+        [`sent.${uidMe}`]: admin.firestore.FieldValue.delete(),
+      });
+
+      // 2. Add friendship to both sides
+      t.set(
+        myFriendshipRef,
+        { friends: { [fromUid]: timestamp } },
+        { merge: true },
+      );
+      t.set(
+        theirFriendshipRef,
+        { friends: { [uidMe]: timestamp } },
+        { merge: true },
+      );
     });
 
-    return { friendshipId, friendOne: from, friendTwo: to };
+    return { success: true, friendId: fromUid };
   },
 );
 
-exports.suggestVideo = functions.https.onCall(async (data, context) => {
+export const suggestVideo = functions.https.onCall(async (data, context) => {
   // Make sure the user is authenticated
   if (!context.auth) {
     throw new functions.https.HttpsError(
@@ -116,18 +163,16 @@ exports.suggestVideo = functions.https.onCall(async (data, context) => {
   }
 
   try {
-    // Check if friend request exists
-    const friendRequestsSnapshot = await db
-      .collection('friendRequests')
-      .where('from', '==', context.auth.uid)
-      .where('to', '==', toUid)
-      .limit(1)
+    // Check if friendship exists
+    const friendshipDoc = await db
+      .collection('friendships')
+      .doc(context.auth.uid)
       .get();
 
-    if (friendRequestsSnapshot.empty) {
+    if (!friendshipDoc.exists || !friendshipDoc.data()?.friends?.[toUid]) {
       throw new functions.https.HttpsError(
         'failed-precondition',
-        'No friend request exists between these users.',
+        'You can only suggest videos to friends.',
       );
     }
 

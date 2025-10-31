@@ -1,3 +1,6 @@
+import { collection, onSnapshot, query, where, doc } from 'firebase/firestore';
+import { db } from './firebase';
+
 /**
  * https://developer.chrome.com/blog/longer-esw-lifetimes/
  *
@@ -65,3 +68,32 @@ export const KeepAliveService = {
     return !!keepAliveInterval;
   },
 };
+
+export function listenToFriendships(
+  userId: string,
+  callback: (snapshot: any) => void,
+) {
+  const friendshipsRef = doc(db, 'friendships', userId);
+  return onSnapshot(friendshipsRef, callback);
+}
+
+export function listenToFriendRequests(
+  userId: string,
+  callback: (snapshot: any) => void,
+) {
+  const requestsRef = doc(db, 'friendRequests', userId);
+  return onSnapshot(requestsRef, callback);
+}
+
+export function listenToSuggestedVideos(
+  userId: string,
+  role: 'sender' | 'receiver',
+  callback: (snapshot: any) => void,
+) {
+  const field = role === 'sender' ? 'from' : 'to';
+  const q = query(
+    collection(db, 'suggestedVideos'),
+    where(field, '==', userId),
+  );
+  return onSnapshot(q, callback);
+}
