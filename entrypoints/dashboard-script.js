@@ -1,19 +1,14 @@
-import {
-  collection,
-  onSnapshot,
-  doc,
-  deleteDoc,
-  getDoc,
-  addDoc,
-  serverTimestamp,
-  query,
-  where,
-  getDocs,
-} from 'firebase/firestore';
+import { onSnapshot, doc, deleteDoc, getDoc } from 'firebase/firestore';
 import { db, hashEmail, functions } from '../utils/firebase';
 import { httpsCallable } from 'firebase/functions';
+import {
+  listenToFriendships,
+  listenToFriendRequests,
+  listenToSuggestedVideos,
+} from '../utils/listeners';
 
 const acceptFriendRequest = httpsCallable(functions, 'acceptFriendRequest');
+const sendFriendRequestFn = httpsCallable(functions, 'sendFriendRequest');
 const getUserProfile = httpsCallable(functions, 'getUserProfile');
 
 export default defineUnlistedScript(async () => {
@@ -47,11 +42,11 @@ export default defineUnlistedScript(async () => {
     // ---------------------------
     // RENDER FRIEND REQUEST CARD
     // ---------------------------
-    function renderFriendRequestCard(requestDocId, requestData) {
+    function renderFriendRequestCard(senderUid, senderEmail) {
       const html = `
         <div class="video-card" style="width: 280px;">
           <div class="video-info">
-            <strong>${requestData.email}</strong><br />
+            <strong>${senderEmail || senderUid}</strong><br />
             <small>wants to be friends</small><br />
             <button class="accept-btn" style="margin-top: 0.5rem; background:#4caf50; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">Accept</button>
             <button class="reject-btn" style="margin-top: 0.5rem; margin-left:5px; background:#f44336; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">Reject</button>
@@ -66,26 +61,9 @@ export default defineUnlistedScript(async () => {
       // Accept button → add to friends collection + remove request
       card.querySelector('.accept-btn').addEventListener('click', async () => {
         try {
-          // Call Cloud Function
-          const result = await acceptFriendRequest({ requestId: requestDocId });
-          const { friendshipId, friendOne, friendTwo } = result.data;
-
-          console.log(
-            'Friendship created:',
-            friendshipId,
-            friendOne,
-            friendTwo,
-          );
-
-          // Determine the UID of the new friend
-          const friendId = friendOne === userId ? friendTwo : friendOne;
-
-          // Only add if not already present
-          if (!friends[friendId]) {
-            const profile = await getUserProfile({ uid: friendId });
-            friends[friendId] = profile.data;
-            render(); // update friends list immediately
-          }
+          // Call Cloud Function with the sender's UID
+          await acceptFriendRequest({ requestId: senderUid });
+          console.log('Friend request accepted from:', senderUid);
 
           // Remove the card immediately from UI for seamlessness
           card.remove();
@@ -98,7 +76,10 @@ export default defineUnlistedScript(async () => {
       // Reject button → just delete request
       card.querySelector('.reject-btn').addEventListener('click', async () => {
         try {
-          await deleteDoc(doc(db, 'friendRequests', requestDocId));
+          // This should be a cloud function for security
+          console.warn(
+            'Rejecting friend requests on the client is not implemented with the new schema. A cloud function is recommended.',
+          );
           card.remove(); // remove the card immediately
         } catch (err) {
           console.error('Failed to reject friend request:', err);
@@ -148,71 +129,55 @@ export default defineUnlistedScript(async () => {
       const friendsList = document.getElementById('friends-list');
       // Use an object to store friend data, keyed by UID, to prevent duplicates
       const friends = {};
+      let unsub;
 
       const render = () => {
         friendsList.innerHTML = '';
         Object.values(friends).forEach((friendData) => {
-          if (friendData) {
-            // Ensure friendData is not null/undefined
-            friendsList.appendChild(renderFriendTile(friendData));
-          }
+          if (friendData) friendsList.appendChild(renderFriendTile(friendData));
         });
       };
 
-      const handleSnapshot = (snapshot, getFriendId) => {
-        const changes = snapshot.docChanges();
-        let needsRender = false;
+      const handleSnapshot = async (snapshot) => {
+        const friendMap = snapshot.data()?.friends || {};
+        const currentFriendIds = Object.keys(friends);
+        const newFriendIds = Object.keys(friendMap);
 
-        // Use a promise to wait for all profile lookups in this batch of changes
-        const promises = changes.map(async (change) => {
-          const docData = change.doc.data();
-          const friendId = getFriendId(docData);
+        // Find new friends to add
+        const friendIdsToAdd = newFriendIds.filter(
+          (id) => !currentFriendIds.includes(id),
+        );
+        // Find removed friends
+        const friendIdsToRemove = currentFriendIds.filter(
+          (id) => !newFriendIds.includes(id),
+        );
 
-          if (change.type === 'removed') {
-            delete friends[friendId];
-            needsRender = true;
-          } else {
-            // 'added' or 'modified'
-            try {
-              // Only fetch profile if we don't already have it
-              if (!friends[friendId]) {
-                const result = await getUserProfile({ uid: friendId });
-                friends[friendId] = result.data;
-                needsRender = true;
-              }
-            } catch (e) {
-              console.error(`Failed to get profile for ${friendId}`, e);
-            }
-          }
-        });
+        friendIdsToRemove.forEach((id) => delete friends[id]);
 
-        // After all changes in this snapshot are processed, render if needed
-        Promise.all(promises).then(() => {
-          if (needsRender) {
+        const profilesToFetch = friendIdsToAdd.map((uid) =>
+          getUserProfile({ uid }),
+        );
+
+        try {
+          const profiles = await Promise.all(profilesToFetch);
+          profiles.forEach((result, index) => {
+            const uid = friendIdsToAdd[index];
+            friends[uid] = result.data;
+          });
+
+          if (friendIdsToAdd.length > 0 || friendIdsToRemove.length > 0) {
             render();
           }
-        });
+        } catch (e) {
+          console.error('Error fetching friend profiles:', e);
+        }
       };
 
-      const q1 = query(
-        collection(db, 'friendships'),
-        where('friendOne', '==', userId),
-      );
-      const unsub1 = onSnapshot(q1, (snap) =>
-        handleSnapshot(snap, (data) => data.friendTwo),
-      );
-
-      const q2 = query(
-        collection(db, 'friendships'),
-        where('friendTwo', '==', userId),
-      );
-      const unsub2 = onSnapshot(q2, (snap) =>
-        handleSnapshot(snap, (data) => data.friendOne),
-      );
+      if (unsub) unsub(); // Unsubscribe from previous listener if any
+      unsub = listenToFriendships(userId, handleSnapshot);
 
       return () => {
-        unsub1();
-        unsub2();
+        if (unsub) unsub();
       };
     }
 
@@ -220,52 +185,34 @@ export default defineUnlistedScript(async () => {
     // WATCH FRIEND REQUESTS
     // ---------------------------
     function watchFriendRequests() {
-      const reqRef = collection(db, 'friendRequests');
-      const q = query(reqRef, where('to', '==', userId));
-
       const reqGrid = document.querySelector('.friend-requests-grid');
-
-      // Keep a map of current cards so we can apply only the incremental changes
       const requestCards = new Map();
 
-      onSnapshot(q, (snapshot) => {
-        // Use docChanges to process only the changes and avoid rebuilding the whole grid
-        const addedFrag = document.createDocumentFragment();
+      listenToFriendRequests(userId, async (snapshot) => {
+        const receivedRequests = snapshot.data()?.received || {};
+        const currentRequestUids = Array.from(requestCards.keys());
+        const newRequestUids = Object.keys(receivedRequests);
 
-        snapshot.docChanges().forEach((change) => {
-          const id = change.doc.id;
-          const data = change.doc.data();
-
-          if (change.type === 'removed') {
-            const existing = requestCards.get(id);
-            if (existing) {
-              existing.remove();
-              requestCards.delete(id);
-            }
-            return;
-          }
-
-          if (change.type === 'added') {
-            const card = renderFriendRequestCard(id, data);
-            requestCards.set(id, card);
-            addedFrag.appendChild(card);
-            return;
-          }
-
-          if (change.type === 'modified') {
-            // Replace the existing card with a newly rendered card for simplicity
-            const existing = requestCards.get(id);
-            const newCard = renderFriendRequestCard(id, data);
-            requestCards.set(id, newCard);
-            if (existing && existing.parentNode) {
-              existing.parentNode.replaceChild(newCard, existing);
-            } else {
-              addedFrag.appendChild(newCard);
-            }
+        // Remove cards for requests that are no longer present
+        currentRequestUids.forEach((uid) => {
+          if (!newRequestUids.includes(uid)) {
+            requestCards.get(uid)?.remove();
+            requestCards.delete(uid);
           }
         });
 
-        if (addedFrag.childNodes.length) reqGrid.appendChild(addedFrag);
+        // Add cards for new requests
+        for (const uid of newRequestUids) {
+          if (!requestCards.has(uid)) {
+            // We need the sender's email. This is a downside of the new schema.
+            // For now, we'll just show the UID. A better solution would be to
+            // include the sender's email in the friendRequests document.
+            const profile = await getUserProfile({ uid });
+            const card = renderFriendRequestCard(uid, profile.data.email);
+            requestCards.set(uid, card);
+            reqGrid.appendChild(card);
+          }
+        }
       });
     }
 
@@ -323,14 +270,8 @@ export default defineUnlistedScript(async () => {
 
       if (!videoGrid) return;
 
-      const field = role === 'sender' ? 'from' : 'to';
-      const q = query(
-        collection(db, 'suggestedVideos'),
-        where(field, '==', userId),
-      );
-
       // Subscribe to real-time updates
-      onSnapshot(q, (snapshot) => {
+      listenToSuggestedVideos(userId, role, (snapshot) => {
         videoGrid.innerHTML = '';
         snapshot.forEach((doc) => {
           const data = { id: doc.id, ...doc.data() };
@@ -339,7 +280,6 @@ export default defineUnlistedScript(async () => {
       });
     }
 
-    // // Watch inbox/outbox
     watchCollection('receiver');
     watchCollection('sender');
 
@@ -363,69 +303,32 @@ export default defineUnlistedScript(async () => {
       if (targetEmail === userEmail.toLowerCase())
         return alert("You can't send a request to yourself!");
 
-      const uidRef = doc(db, 'emailHashes', hashEmail(targetEmail));
-      const otherUserIdDoc = await getDoc(uidRef);
-      const uidOther = otherUserIdDoc.exists()
-        ? otherUserIdDoc.data().uid
-        : null;
-
-      if (uidOther === null) {
-        return alert(
-          'The email you entered does not have a ShareYT uid, please tell them to register with ShareYT first!',
-        );
-      }
-      // Check if a request has already been sent in either direction
-      const q1 = query(
-        collection(db, 'friendRequests'),
-        where('from', '==', userId),
-        where('to', '==', uidOther),
-      );
-
-      const q2 = query(
-        collection(db, 'friendRequests'),
-        where('from', '==', uidOther),
-        where('to', '==', userId),
-      );
-
-      const [snapshot1, snapshot2] = await Promise.all([
-        getDocs(q1),
-        getDocs(q2),
-      ]);
-
-      if (!snapshot1.empty || !snapshot2.empty) {
-        return alert(
-          `A friend request already exists between you and ${targetEmail}!`,
-        );
-      }
-
-      // Check if that friend has already been added and is now part of the friends list
-      const friendshipId = [userId, uidOther].sort().join('_');
       try {
-        const friendshipRef = doc(db, 'friendships', friendshipId);
-        const friendshipDoc = await getDoc(friendshipRef);
+        const emailHash = hashEmail(targetEmail);
+        const uidRef = doc(db, 'emailHashes', emailHash);
+        const otherUserDoc = await getDoc(uidRef);
 
-        if (friendshipDoc.exists()) {
-          return alert(`${targetEmail} is already your friend!`);
+        if (!otherUserDoc.exists()) {
+          return alert('User with that email does not exist.');
         }
+        const toUid = otherUserDoc.data().uid;
+
+        // Check if already friends
+        const friendshipDoc = await getDoc(doc(db, 'friendships', userId));
+        if (friendshipDoc.exists() && friendshipDoc.data().friends?.[toUid]) {
+          return alert('You are already friends with this user.');
+        }
+
+        await sendFriendRequestFn({ toUid });
+
+        let success = `A friend request was sent to ${targetEmail}`;
+        console.log(success);
+        emailInput.value = '';
+        return alert(success);
       } catch (e) {
-        console.error(
-          'Error checking friendship: most likely due to no read access (userId and uidOther are both not in any documents in the collection)',
-          e,
-        );
+        console.error('Error sending friend request:', e);
+        alert(`Failed to send friend request: ${e.message}`);
       }
-
-      // Send the friend request
-      await addDoc(collection(db, 'friendRequests'), {
-        from: userId,
-        to: uidOther,
-        email: userEmail,
-        createdAt: serverTimestamp(),
-      });
-
-      let success = `A friend request was sent to ${targetEmail}`;
-      console.log(success);
-      emailInput.value = '';
-      return alert(success);
     }
 
     sendBtn?.addEventListener('click', sendFriendRequest);

@@ -78,7 +78,7 @@ export default defineContentScript({
         console.log(`Subscribers: ${subscriberCount}`);
         console.log(`Thumbnail URL: ${thumbnailUrl}`);
         console.log('--------------------------------------------------');
-        const targetEmail = '';
+        const targetEmail = ''; // TODO later: get from user input
 
         // Have the background call the cloud function for us
         messaging.sendMessage('recommend:video', {

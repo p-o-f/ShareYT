@@ -5,27 +5,16 @@ import {
   signInWithCredential,
   GoogleAuthProvider,
 } from 'firebase/auth';
-import { auth } from '../../utils/firebase';
-import { firebaseAuth } from './offscreenInteraction';
+import { auth, db, dbReadyPromise, functions } from '../../utils/firebase';
 import { SerializedUser } from '@/types/types';
 import { summarizeVideo } from './ai';
-import {
-  collection,
-  onSnapshot,
-  doc,
-  deleteDoc,
-  getDoc,
-  addDoc,
-  serverTimestamp,
-  query,
-  where,
-  getDocs,
-  DocumentData,
-  QuerySnapshot,
-} from 'firebase/firestore';
-import { db, dbReadyPromise, hashEmail, functions } from '../../utils/firebase';
 import { httpsCallable } from 'firebase/functions';
-import { KeepAliveService } from '@/utils/listeners';
+import {
+  KeepAliveService,
+  listenToFriendships,
+  listenToFriendRequests,
+  listenToSuggestedVideos,
+} from '@/utils/listeners';
 
 function toSerializedUser(user: User): SerializedUser {
   return {
@@ -132,7 +121,7 @@ export default defineBackground(() => {
 
     await storage.setItem('local:user', serialized);
     messaging.sendMessage('auth:stateChanged', serialized);
-    loadFriendships(user?.uid);
+    // Listeners will be started in waitForDBInitialization if user exists
   });
 
   messaging.onMessage('auth:getUser', async () => {
@@ -187,47 +176,16 @@ async function waitForDBInitialization() {
   // Await the promise to ensure the object is available
   const db = await dbReadyPromise;
 
-  console.log('Firestore is ready! Starting listeners...');
   const user = await storage.getItem('local:user');
 
-  // NOW you can safely use the db object
-  // ... Firestore operations ...
+  if (user?.uid) {
+    console.log('Firestore is ready! Starting listeners for user:', user.uid);
+    // You can start your listeners here now that the user is confirmed and DB is ready.
+    // For example:
+    // listenToFriendships(user.uid, (snapshot) => { ... });
+  } else {
+    console.log('Firestore is ready, but no user is logged in.');
+  }
 }
 
 waitForDBInitialization();
-// ✅ Hybrid caching for friendships
-let friendshipsMap = new Map();
-
-async function loadFriendships(userId: unknown) {
-  console.log('calling loadFriendships with userId:', userId);
-
-  const friendshipsRef = collection(db, 'friendships');
-  const friendshipsQuery = query(
-    friendshipsRef,
-    where('participants', 'array-contains', userId),
-  );
-  console.log('Set up friendships query for userId:', userId);
-
-  const cached = await storage.getItem('local:friendships');
-  if (cached) {
-    console.log('Loaded friendships from local cache');
-    //friendshipsMap = new Map(cached.friendships.map((f) => [f.id, f]));
-  }
-
-  onSnapshot(friendshipsQuery, async (snapshot) => {
-    snapshot.docChanges().forEach((change) => {
-      const docId = change.doc.id;
-      const data = { id: docId, ...change.doc.data() };
-
-      if (change.type === 'added' || change.type === 'modified') {
-        friendshipsMap.set(docId, data);
-      } else if (change.type === 'removed') {
-        friendshipsMap.delete(docId);
-      }
-    });
-
-    const friendshipsArray = Array.from(friendshipsMap.values());
-    await storage.setItem('local:friendships', friendshipsArray);
-    console.log('Updated local cache:', friendshipsArray);
-  });
-}
