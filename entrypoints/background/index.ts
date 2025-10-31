@@ -25,6 +25,7 @@ import {
 } from 'firebase/firestore';
 import { db, dbReadyPromise, hashEmail, functions } from '../../utils/firebase';
 import { httpsCallable } from 'firebase/functions';
+import { KeepAliveService } from '@/utils/listeners';
 
 function toSerializedUser(user: User): SerializedUser {
   return {
