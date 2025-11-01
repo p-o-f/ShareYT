@@ -1,3 +1,7 @@
+// Currently unused - we don't need an offscreen doc because we can force the background to be persistent
+// (not that performance heavy for our use case) using the keep-alive technique implemented in utils/listeners.ts
+
+/*
 const _URL = 'https://video-sync-10531.web.app/signInWithPopup.html';
 const iframe = document.createElement('iframe');
 iframe.src = _URL;
@@ -14,7 +18,7 @@ function handleChromeMessages() {
         globalThis.removeEventListener('message', handleIframeMessage);
         resolve(parsed.user);
       } catch (e) {
-        console.log(`json parse failed - ${e.message}`);
+        console.log(`json parse failed for data: ${data}`, e);
         reject(e);
       }
     }
@@ -26,3 +30,4 @@ function handleChromeMessages() {
     );
   });
 }
+*/

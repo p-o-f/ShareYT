@@ -8,6 +8,8 @@ import {
 } from '../utils/listeners';
 
 const acceptFriendRequest = httpsCallable(functions, 'acceptFriendRequest');
+const rejectFriendRequestFn = httpsCallable(functions, 'rejectFriendRequest');
+const removeFriendFn = httpsCallable(functions, 'removeFriend');
 const sendFriendRequestFn = httpsCallable(functions, 'sendFriendRequest');
 const getUserProfile = httpsCallable(functions, 'getUserProfile');
 
@@ -76,11 +78,8 @@ export default defineUnlistedScript(async () => {
       // Reject button → just delete request
       card.querySelector('.reject-btn').addEventListener('click', async () => {
         try {
-          // This should be a cloud function for security
-          console.warn(
-            'Rejecting friend requests on the client is not implemented with the new schema. A cloud function is recommended.',
-          );
-          card.remove(); // remove the card immediately
+          await rejectFriendRequestFn({ fromUid: senderUid });
+          card.remove(); // remove the card from the UI
         } catch (err) {
           console.error('Failed to reject friend request:', err);
           alert('Something went wrong rejecting this request.');
@@ -93,7 +92,7 @@ export default defineUnlistedScript(async () => {
     // ---------------------------
     // RENDER FRIEND TILE
     // ---------------------------
-    function renderFriendTile(friendData) {
+    function renderFriendTile(friendUid, friendData) {
       //console.log('Calling renderFriendTile with friend tile for:', friendData);
       const html = `
         <div class="friend-tile" style="display: flex; align-items: center; justify-content: space-between; padding: 8px 0;">
@@ -112,10 +111,20 @@ export default defineUnlistedScript(async () => {
 
       tile
         .querySelector('.remove-friend-btn')
-        .addEventListener('click', (e) => {
+        .addEventListener('click', async (e) => {
           e.stopPropagation();
-          // For now, do nothing. In the future, this will remove the friend.
-          console.log('Remove friend button clicked for:', friendData.email);
+          if (
+            confirm(
+              `Are you sure you want to remove ${friendData.displayName || friendData.email} as a friend?`,
+            )
+          ) {
+            try {
+              await removeFriendFn({ friendUid });
+            } catch (err) {
+              console.error('Error removing friend:', err);
+              alert('Failed to remove friend.');
+            }
+          }
         });
 
       return tile;
@@ -133,8 +142,10 @@ export default defineUnlistedScript(async () => {
 
       const render = () => {
         friendsList.innerHTML = '';
-        Object.values(friends).forEach((friendData) => {
-          if (friendData) friendsList.appendChild(renderFriendTile(friendData));
+        Object.entries(friends).forEach(([uid, friendData]) => {
+          if (friendData) {
+            friendsList.appendChild(renderFriendTile(uid, friendData));
+          }
         });
       };
 

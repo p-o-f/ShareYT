@@ -136,6 +136,90 @@ export const acceptFriendRequest = functions.https.onCall(
   },
 );
 
+export const rejectFriendRequest = functions.https.onCall(
+  async (data, context) => {
+    const { fromUid } = data;
+    const uidMe = context.auth?.uid;
+
+    if (!uidMe) {
+      throw new functions.https.HttpsError('unauthenticated', 'Login required');
+    }
+
+    if (!fromUid || fromUid === uidMe) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'Invalid request data. Missing sender UID.',
+      );
+    }
+
+    const myRequestsRef = db.collection('friendRequests').doc(uidMe);
+    const theirRequestsRef = db.collection('friendRequests').doc(fromUid);
+
+    await db.runTransaction(async (t) => {
+      // We read the doc first to ensure the request exists before proceeding.
+      const myReqDoc = await t.get(myRequestsRef);
+      if (!myReqDoc.exists || !myReqDoc.data()?.received?.[fromUid]) {
+        // This is not a critical error. The request might have been cancelled.
+        // We can just log it and let the function succeed.
+        console.log(`Request from ${fromUid} to ${uidMe} not found.`);
+        return;
+      }
+
+      // Atomically remove the request from both sides.
+      t.update(myRequestsRef, {
+        [`received.${fromUid}`]: admin.firestore.FieldValue.delete(),
+      });
+      t.update(theirRequestsRef, {
+        [`sent.${uidMe}`]: admin.firestore.FieldValue.delete(),
+      });
+    });
+
+    return { success: true };
+  },
+);
+
+export const removeFriend = functions.https.onCall(async (data, context) => {
+  const { friendUid } = data;
+  const uidMe = context.auth?.uid;
+
+  if (!uidMe) {
+    throw new functions.https.HttpsError('unauthenticated', 'Login required');
+  }
+
+  if (!friendUid || friendUid === uidMe) {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      'Invalid request data. Missing friend UID.',
+    );
+  }
+
+  const myFriendshipRef = db.collection('friendships').doc(uidMe);
+  const theirFriendshipRef = db.collection('friendships').doc(friendUid);
+
+  await db.runTransaction(async (t) => {
+    // We read the doc first to ensure the friendship exists before proceeding.
+    const myFriendshipDoc = await t.get(myFriendshipRef);
+    if (
+      !myFriendshipDoc.exists ||
+      !myFriendshipDoc.data()?.friends?.[friendUid]
+    ) {
+      // This is not a critical error. The friend might have already been removed.
+      console.log(`Friendship between ${uidMe} and ${friendUid} not found.`);
+      return;
+    }
+
+    // Atomically remove the friendship from both sides.
+    t.update(myFriendshipRef, {
+      [`friends.${friendUid}`]: admin.firestore.FieldValue.delete(),
+    });
+    t.update(theirFriendshipRef, {
+      [`friends.${uidMe}`]: admin.firestore.FieldValue.delete(),
+    });
+  });
+
+  return { success: true };
+});
+
 export const suggestVideo = functions.https.onCall(async (data, context) => {
   // Make sure the user is authenticated
   if (!context.auth) {
