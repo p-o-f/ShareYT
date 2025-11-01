@@ -176,7 +176,7 @@ async function waitForDBInitialization() {
   // Await the promise to ensure the object is available
   const db = await dbReadyPromise;
 
-  const user = await storage.getItem('local:user');
+  const user = await storage.getItem<SerializedUser | null>('local:user');
 
   if (user?.uid) {
     console.log('Firestore is ready! Starting listeners for user:', user.uid);
