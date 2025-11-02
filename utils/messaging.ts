@@ -9,6 +9,8 @@ interface MessagingProtocol {
   'auth:signOut': () => void;
   'auth:getUser': () => SerializedUser | null;
   'summarize:video': () => string;
+  'friends:get': () => any[]; // Add this line
+  'friends:updateCache': () => void;
 
   // Background->UI messages
   'auth:stateChanged': (user: SerializedUser | null) => void;
@@ -18,7 +20,14 @@ interface MessagingProtocol {
   'auth:chromeOffscreen': () => Promise<any>;
 
   // content->background
-  'recommend:video': (recc: VideoRecommendation | null) => void;
+  'recommend:video': (
+    recc: {
+      videoId: string | null;
+      to: string[];
+      thumbnailUrl: string;
+      title: string;
+    } | null,
+  ) => void;
 }
 
 export const messaging = defineExtensionMessaging<MessagingProtocol>();
