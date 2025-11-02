@@ -1,12 +1,13 @@
 import {
-  onAuthStateChanged,
-  User,
-  signOut,
-  signInWithCredential,
   GoogleAuthProvider,
+  onAuthStateChanged,
+  signInWithCredential,
+  signOut,
+  User,
 } from 'firebase/auth';
 import { auth, db, dbReadyPromise, functions } from '../../utils/firebase';
 import { SerializedUser } from '@/types/types';
+import { doc, getDoc } from 'firebase/firestore';
 import { summarizeVideo } from './ai';
 import { httpsCallable } from 'firebase/functions';
 import {
@@ -151,6 +152,41 @@ export default defineBackground(() => {
     await signOut(auth);
   });
 
+  async function fetchAndCacheFriends() {
+    const user = await storage.getItem<SerializedUser>('local:user');
+    if (!user?.uid) return [];
+
+    try {
+      const getUserProfile = httpsCallable(functions, 'getUserProfile');
+      const friendshipDoc = await getDoc(doc(db, 'friendships', user.uid));
+      const friendMap = friendshipDoc.data()?.friends || {};
+      const friendUids = Object.keys(friendMap);
+
+      const profilePromises = friendUids.map((uid) => getUserProfile({ uid }));
+      const profiles = await Promise.all(profilePromises);
+
+      const friendsList = profiles.map((p: any, i) => ({
+        id: friendUids[i],
+        label: p.data.displayName || p.data.email,
+        img: p.data.photoURL || 'https://www.gravatar.com/avatar?d=mp',
+      }));
+
+      await storage.setItem('local:friendsList', friendsList);
+      return friendsList;
+    } catch (e) {
+      console.error('Error fetching friends in background:', e);
+      return [];
+    }
+  }
+
+  messaging.onMessage('friends:get', async () => {
+    return fetchAndCacheFriends();
+  });
+
+  messaging.onMessage('friends:updateCache', async () => {
+    await fetchAndCacheFriends();
+  });
+
   messaging.onMessage('summarize:video', () => {
     const videoUrl =
       'https://www.youtube.com/watch?v=YpPGRJhOP8k&pp=ygUYYW1hemZpdCBiYWxhbmNlIDIgcmV2aWV3'; // temporary hardcoded URL for testing
@@ -161,12 +197,14 @@ export default defineBackground(() => {
   messaging.onMessage('recommend:video', ({ data }) => {
     console.log('in recommending video background');
     const suggestVideo = httpsCallable(functions, 'suggestVideo');
-    suggestVideo({
-      videoId: data!.videoId,
-      to: data!.to,
-      thumbnailUrl: data!.thumbnailUrl,
-      title: data!.title,
-    });
+    if (data && data.to && Array.isArray(data.to)) {
+      suggestVideo({
+        videoId: data.videoId,
+        toUids: data.to, // Pass array of UIDs
+        thumbnailUrl: data.thumbnailUrl,
+        title: data.title,
+      });
+    }
   });
 });
 

@@ -1,6 +1,4 @@
 import { SerializedUser } from '@/types/types';
-import { getDoc, doc } from 'firebase/firestore';
-import { hashEmail } from '../../utils/firebase';
 
 export default defineContentScript({
   matches: ['*://*.youtube.com/*'], // TODO handle YT shorts format later
@@ -78,15 +76,6 @@ export default defineContentScript({
         console.log(`Subscribers: ${subscriberCount}`);
         console.log(`Thumbnail URL: ${thumbnailUrl}`);
         console.log('--------------------------------------------------');
-        const targetEmail = ''; // TODO later: get from user input
-
-        // Have the background call the cloud function for us
-        messaging.sendMessage('recommend:video', {
-          videoId,
-          to: targetEmail,
-          thumbnailUrl,
-          title,
-        });
       };
 
       // Add button to the left controls bar
@@ -101,44 +90,6 @@ export default defineContentScript({
         document.removeEventListener('click', outsideClickHandler);
         return;
       }
-
-      const items = [
-        {
-          id: 'blackbear',
-          label: 'Black Bear',
-          img: 'https://placebear.com/32/32',
-        },
-        {
-          id: 'polarbear',
-          label: 'Polar Bear',
-          img: 'https://placebear.com/32/32',
-        },
-        {
-          id: 'elephant',
-          label: 'Elephant',
-          img: 'https://randomuser.me/api/portraits/women/1.jpg',
-        },
-        {
-          id: 'monkey',
-          label: 'Monkey',
-          img: 'https://randomuser.me/api/portraits/men/2.jpg',
-        },
-        {
-          id: 'parrot',
-          label: 'Parrot',
-          img: 'https://randomuser.me/api/portraits/women/3.jpg',
-        },
-        {
-          id: 'rabbit',
-          label: 'Rabbit',
-          img: 'https://randomuser.me/api/portraits/men/4.jpg',
-        },
-        {
-          id: 'snake',
-          label: 'Snake',
-          img: 'https://randomuser.me/api/portraits/women/5.jpg',
-        },
-      ];
 
       let selectedIds = new Set<string>();
 
@@ -237,10 +188,57 @@ export default defineContentScript({
         confirmBtn.style.opacity = anySelected ? '1' : '0.5';
       };
 
+      confirmBtn.onclick = () => {
+        const selectedUids = Array.from(selectedIds);
+        console.log('Selected UIDs:', selectedUids);
+        container.remove();
+        document.removeEventListener('click', outsideClickHandler);
+
+        const url = window.location.href;
+        const getVideoIdFromUrl = (url: string) => {
+          const match =
+            url.match(/[?&]v=([^&]+)/) ||
+            url.match(/youtu\.be\/([^?&]+)/) ||
+            url.match(/\/embed\/([^?/?&]+)/);
+          return match ? match[1] : null;
+        };
+        const videoId = getVideoIdFromUrl(url);
+        const thumbnailUrl = videoId
+          ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
+          : 'Thumbnail unavailable';
+        const title = document.title;
+
+        messaging.sendMessage('recommend:video', {
+          videoId,
+          to: selectedUids, // Sending array of UIDs
+          thumbnailUrl,
+          title,
+        });
+      };
+
+      container.appendChild(footer);
+      document.body.appendChild(container);
+
+      function outsideClickHandler(e: MouseEvent) {
+        if (
+          !container.contains(e.target as Node) &&
+          !anchorButton.contains(e.target as Node)
+        ) {
+          container.remove();
+          document.removeEventListener('click', outsideClickHandler);
+        }
+      }
+      setTimeout(() => {
+        document.addEventListener('click', outsideClickHandler);
+      }, 0);
+
+      // --- Data Fetching and Population ---
+      let items: any[] = [];
+
       const updateSelectAllState = (visibleFiltered: typeof items) => {
         const allVisibleSelected =
           visibleFiltered.length > 0 &&
-          visibleFiltered.every((i) => selectedIds.has(i.id));
+          visibleFiltered.every((i) => !i.disabled && selectedIds.has(i.id));
         const noneVisibleSelected = visibleFiltered.every(
           (i) => !selectedIds.has(i.id),
         );
@@ -262,7 +260,7 @@ export default defineContentScript({
           item.label.toLowerCase().includes(filter.toLowerCase()),
         );
 
-        if (filtered.length === 0) {
+        if (filtered.length === 0 && items.length > 0) {
           noResults.style.display = 'block';
           itemList.appendChild(noResults);
         } else {
@@ -275,6 +273,7 @@ export default defineContentScript({
 
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
+            checkbox.disabled = !!item.disabled;
             checkbox.checked = selectedIds.has(item.id);
             checkbox.id = `opt-${item.id}`;
             checkbox.onchange = () => {
@@ -296,6 +295,10 @@ export default defineContentScript({
             label.htmlFor = checkbox.id;
             label.textContent = ` ${item.label}`;
             label.style.marginLeft = '8px';
+            if (item.disabled) {
+              row.style.opacity = '0.5';
+              row.style.cursor = 'not-allowed';
+            }
 
             row.appendChild(checkbox);
             row.appendChild(img);
@@ -316,37 +319,59 @@ export default defineContentScript({
         );
 
         if (selectAllCheckbox.checked) {
-          visibleItems.forEach((item) => selectedIds.add(item.id));
+          visibleItems.forEach(
+            (item) => !item.disabled && selectedIds.add(item.id),
+          );
         } else {
           visibleItems.forEach((item) => selectedIds.delete(item.id));
         }
         renderItems(filter);
       };
 
-      confirmBtn.onclick = () => {
-        console.log('Selected IDs:', Array.from(selectedIds));
-        container.remove();
-        document.removeEventListener('click', outsideClickHandler);
+      search.oninput = () => renderItems(search.value);
+
+      const populateFriends = (friends: any[]) => {
+        items = friends;
+        if (items.length === 0) {
+          items.push({
+            id: 'example-friend',
+            label: 'Example Friend',
+            img: 'https://www.gravatar.com/avatar?d=mp',
+            disabled: true,
+          });
+        }
+
+        const onlyExampleFriend =
+          items.length === 1 && items[0].id === 'example-friend';
+        selectAllCheckbox.disabled = onlyExampleFriend;
+        selectAllWrapper.style.opacity = onlyExampleFriend ? '0.5' : '1';
+
+        renderItems();
       };
 
-      search.oninput = () => renderItems(search.value);
-      renderItems();
-
-      container.appendChild(footer);
-      document.body.appendChild(container);
-
-      function outsideClickHandler(e: MouseEvent) {
-        if (
-          !container.contains(e.target as Node) &&
-          !anchorButton.contains(e.target as Node)
-        ) {
-          container.remove();
-          document.removeEventListener('click', outsideClickHandler);
+      // --- Main logic ---
+      storage.getItem('local:friendsList').then((cachedFriends) => {
+        if (cachedFriends) {
+          // Render from cache immediately
+          populateFriends(cachedFriends);
+          // Then, trigger a background update.
+          messaging.sendMessage('friends:updateCache', null);
+        } else {
+          // No cache, show loading and fetch for the first time.
+          itemList.innerHTML =
+            '<div style="padding: 8px; text-align: center; color: #666;">Loading friends...</div>';
+          messaging
+            .sendMessage('friends:get', null)
+            .then((fetchedFriends) => {
+              populateFriends(fetchedFriends);
+            })
+            .catch((err) => {
+              console.error('Failed to fetch friends:', err);
+              itemList.innerHTML =
+                '<div style="padding: 8px; text-align: center; color: #d93025;">Could not load friends.</div>';
+            });
         }
-      }
-      setTimeout(() => {
-        document.addEventListener('click', outsideClickHandler);
-      }, 0);
+      });
     }
 
     const injectShareDropdownButton = (): boolean => {

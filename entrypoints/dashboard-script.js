@@ -231,10 +231,11 @@ export default defineUnlistedScript(async () => {
     // VIDEO WATCHERS
     // ---------------------------
     function renderVideoCard(data, role) {
+      console.log('Rendering video card for:', data);
       const label =
         role === 'receiver'
-          ? `Shared by ${data.suggestedBy || 'Unknown'}`
-          : `Sent to ${data.sentTo || 'Unknown'}`;
+          ? `Shared by ${data.from || 'Unknown'}` // TODO fix this, currently just showing UIDs
+          : `Sent to ${data.to || 'Unknown'}`;
 
       const dateObj = data.timestamp?.toDate?.() ?? null;
 
@@ -243,6 +244,9 @@ export default defineUnlistedScript(async () => {
             year: 'numeric',
             month: 'short',
             day: 'numeric',
+            hour: 'numeric',
+            minute: 'numeric',
+            hour12: true,
           })
         : 'Unknown date';
 
@@ -253,7 +257,7 @@ export default defineUnlistedScript(async () => {
   </div>
   <div class="video-info" style="margin-top: 8px;">
     <strong>${data.title || 'Untitled Video'}</strong><br />
-    <small>${label} · ${formattedDate}</small><br />
+    <small>${label} at ${formattedDate}</small><br />
     <input type="checkbox" ${data.watched ? 'checked' : ''}/> Mark as Watched
     <span class="watch-btn" style="float: right; color: #3b4cca; cursor: pointer;">Watch</span>
   </div>

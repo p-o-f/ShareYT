@@ -229,72 +229,60 @@ export const suggestVideo = functions.https.onCall(async (data, context) => {
     );
   }
 
-  const { videoId, to, thumbnailUrl, title } = data;
+  const { videoId, toUids, thumbnailUrl, title } = data; // `toUids` is an array of recipient UIDs
+  const fromUid = context.auth.uid;
 
   // Check required fields
-  if (!videoId || !to || !thumbnailUrl || !title) {
-    throw new functions.https.HttpsError('invalid-argument', 'Missing fields.');
-  }
-
-  let toUid;
-  try {
-    toUid = (await admin.auth().getUserByEmail(to)).uid;
-  } catch {
+  if (
+    !videoId ||
+    !toUids ||
+    !Array.isArray(toUids) ||
+    toUids.length === 0 ||
+    !thumbnailUrl ||
+    !title
+  ) {
     throw new functions.https.HttpsError(
-      'not-found',
-      'User with this email not found.',
+      'invalid-argument',
+      'Missing required fields.',
     );
   }
 
-  try {
-    // Check if friendship exists
-    const friendshipDoc = await db
-      .collection('friendships')
-      .doc(context.auth.uid)
-      .get();
+  const batch = db.batch();
 
-    if (!friendshipDoc.exists || !friendshipDoc.data()?.friends?.[toUid]) {
-      throw new functions.https.HttpsError(
-        'failed-precondition',
-        'You can only suggest videos to friends.',
+  // We should verify friendship for all recipients
+  const friendshipDoc = await db.collection('friendships').doc(fromUid).get();
+  const friendsMap = friendshipDoc.data()?.friends || {};
+
+  for (const toUid of toUids) {
+    if (fromUid === toUid) continue; // Can't send to self
+
+    // Verify friendship
+    if (!friendsMap[toUid]) {
+      console.warn(
+        `User ${fromUid} tried to send video to non-friend ${toUid}. Skipping.`,
       );
+      continue;
     }
 
-    // Check for duplicate suggestions -- TODO verify functionality
-    const existingSuggestionSnapshot = await db
-      .collection('suggestedVideos')
-      .where('videoId', '==', videoId)
-      .where('from', '==', context.auth.uid)
-      .where('to', '==', toUid)
-      .limit(1)
-      .get();
+    // Create a composite ID to prevent duplicates.
+    // If the suggestion already exists, this will just overwrite it.
+    const compositeId = `${fromUid}_${toUid}_${videoId}`;
+    const newSuggestionRef = db.collection('suggestedVideos').doc(compositeId);
 
-    if (!existingSuggestionSnapshot.empty) {
-      throw new functions.https.HttpsError(
-        'already-exists',
-        'This video has already been suggested to this user.',
-      );
-    }
-
-    // Add video suggestion
-    const suggestionRef = await db.collection('suggestedVideos').add({
+    batch.set(newSuggestionRef, {
       videoId,
-      from: context.auth.uid,
+      from: fromUid,
       to: toUid,
       thumbnailUrl,
       title,
       watched: false,
       timestamp: admin.firestore.FieldValue.serverTimestamp(),
     });
-
-    return { success: true, id: suggestionRef.id };
-  } catch (error) {
-    console.error('Error suggesting video:', error);
-    throw new functions.https.HttpsError(
-      'unknown',
-      'An error occurred while suggesting the video.',
-    );
   }
+
+  await batch.commit();
+
+  return { success: true };
 });
 
 export const getUserProfile = functions.https.onCall(async (data) => {
