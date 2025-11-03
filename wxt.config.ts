@@ -7,7 +7,7 @@ export default defineConfig({
   ],
   manifest: ({ manifestVersion }) => {
     return {
-      permissions: ['identity', 'offscreen', 'storage'],
+      permissions: ['identity', 'offscreen', 'storage', 'notifications'],
       content_security_policy: {
         extension_pages:
           manifestVersion == 2

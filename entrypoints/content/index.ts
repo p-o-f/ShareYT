@@ -77,7 +77,6 @@ export default defineContentScript({
         console.log(`Thumbnail URL: ${thumbnailUrl}`);
         console.log('--------------------------------------------------');
       };
-
       // Add button to the left controls bar
       controls.appendChild(button);
       return true;
@@ -96,9 +95,6 @@ export default defineContentScript({
       const container = document.createElement('div');
       container.id = 'custom-dropdown';
       container.style.position = 'absolute';
-      let offset = 285; // TODO fix this offset thing to have relative positioning later
-      container.style.top = `${anchorButton.getBoundingClientRect().top + window.scrollY - offset}px`;
-      container.style.left = `${anchorButton.getBoundingClientRect().left + window.scrollX}px`;
       container.style.width = '250px';
       container.style.background = '#fff';
       container.style.border = '1px solid #ccc';
@@ -107,9 +103,11 @@ export default defineContentScript({
       container.style.zIndex = '9999';
       container.style.padding = '8px';
       container.style.fontFamily = 'Arial, sans-serif';
+      container.style.color = '#000';
       container.style.display = 'flex';
       container.style.flexDirection = 'column';
       container.style.maxHeight = '250px'; // max height of container containing selection options
+      container.style.visibility = 'hidden'; // will set position then reveal
 
       // Search bar
       const search = document.createElement('input');
@@ -121,6 +119,7 @@ export default defineContentScript({
       search.style.boxSizing = 'border-box';
       search.style.border = '1px solid #ccc';
       search.style.borderRadius = '4px';
+      search.style.color = '#000';
       container.appendChild(search);
 
       // Toolbar
@@ -141,6 +140,7 @@ export default defineContentScript({
       const selectAllLabel = document.createElement('label');
       selectAllLabel.textContent = ' Select all';
       selectAllLabel.style.marginLeft = '4px';
+      selectAllLabel.style.color = '#000';
 
       selectAllWrapper.appendChild(selectAllCheckbox);
       selectAllWrapper.appendChild(selectAllLabel);
@@ -193,6 +193,7 @@ export default defineContentScript({
         console.log('Selected UIDs:', selectedUids);
         container.remove();
         document.removeEventListener('click', outsideClickHandler);
+        window.removeEventListener('resize', reposition);
 
         const url = window.location.href;
         const getVideoIdFromUrl = (url: string) => {
@@ -217,7 +218,59 @@ export default defineContentScript({
       };
 
       container.appendChild(footer);
+
+      // Append to body to avoid transform-induced blur from the controls bar
       document.body.appendChild(container);
+
+      // Position the dropdown relative to the YouTube player bar (above by default)
+      const GAP = 8; // gap between bar and dropdown
+      const containerWidth = 250; // sync with container.style.width
+
+      const reposition = () => {
+        const btnRect = anchorButton.getBoundingClientRect();
+        const bar = (anchorButton.closest('.ytp-chrome-bottom') ||
+          document.querySelector('.ytp-chrome-bottom')) as HTMLElement | null;
+        const player = (bar?.closest('.html5-video-player') ||
+          document.querySelector('.html5-video-player')) as HTMLElement | null;
+
+        const barRect = bar?.getBoundingClientRect();
+        const playerRect = player?.getBoundingClientRect();
+
+        // Horizontal: align to button's left; clamp within player or viewport
+        const desiredLeftVw = btnRect.left; // viewport coordinate
+        const minLeftVw = playerRect ? playerRect.left : 0;
+        const maxLeftVw =
+          (playerRect ? playerRect.right : window.innerWidth) - containerWidth;
+        const clampedLeftVw = Math.min(
+          Math.max(desiredLeftVw, minLeftVw),
+          maxLeftVw,
+        );
+        const leftPx = Math.round(clampedLeftVw + window.scrollX);
+
+        // Vertical: prefer above the bar (or button) else place below
+        const anchorTopVw = barRect ? barRect.top : btnRect.top;
+        const aboveTopVw = anchorTopVw - container.offsetHeight - GAP;
+        let topPx: number;
+        if (aboveTopVw >= 0) {
+          topPx = Math.round(aboveTopVw + window.scrollY);
+        } else {
+          const belowTopVw = (barRect ? barRect.bottom : btnRect.bottom) + GAP;
+          topPx = Math.round(belowTopVw + window.scrollY);
+        }
+
+        container.style.left = `${leftPx}px`;
+        container.style.top = `${topPx}px`;
+        container.style.bottom = 'auto';
+      };
+
+      // Compute initial position then show the dropdown
+      requestAnimationFrame(() => {
+        reposition();
+        container.style.visibility = 'visible';
+      });
+
+      // Keep anchored on resize or layout changes (e.g., theater mode)
+      window.addEventListener('resize', reposition);
 
       function outsideClickHandler(e: MouseEvent) {
         if (
@@ -226,6 +279,7 @@ export default defineContentScript({
         ) {
           container.remove();
           document.removeEventListener('click', outsideClickHandler);
+          window.removeEventListener('resize', reposition);
         }
       }
       setTimeout(() => {
@@ -295,6 +349,7 @@ export default defineContentScript({
             label.htmlFor = checkbox.id;
             label.textContent = ` ${item.label}`;
             label.style.marginLeft = '8px';
+            label.style.color = '#000';
             if (item.disabled) {
               row.style.opacity = '0.5';
               row.style.cursor = 'not-allowed';
@@ -351,17 +406,17 @@ export default defineContentScript({
 
       // --- Main logic ---
       storage.getItem('local:friendsList').then((cachedFriends) => {
-        if (cachedFriends) {
+        if (cachedFriends && Array.isArray(cachedFriends)) {
           // Render from cache immediately
           populateFriends(cachedFriends);
           // Then, trigger a background update.
-          messaging.sendMessage('friends:updateCache', null);
+          messaging.sendMessage('friends:updateCache');
         } else {
           // No cache, show loading and fetch for the first time.
           itemList.innerHTML =
             '<div style="padding: 8px; text-align: center; color: #666;">Loading friends...</div>';
           messaging
-            .sendMessage('friends:get', null)
+            .sendMessage('friends:get')
             .then((fetchedFriends) => {
               populateFriends(fetchedFriends);
             })
@@ -388,7 +443,7 @@ export default defineContentScript({
       button.style.fontSize = '16px';
       button.style.cursor = 'pointer';
       button.style.userSelect = 'none';
-      button.textContent = '✉️';
+      button.textContent = '🔁';
 
       button.onmouseenter = () => {
         button.style.opacity = '0.8';
