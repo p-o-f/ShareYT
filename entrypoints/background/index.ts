@@ -179,12 +179,14 @@ export default defineBackground(() => {
     }
   }
 
+  // Purpose: To get the friends list when there is nothing in the cache. This is the "cold start" or "first time" scenario.
   messaging.onMessage('friends:get', async () => {
-    return fetchAndCacheFriends();
+    return fetchAndCacheFriends(); // This message is the "I need data now, and I'm willing to wait for it" request.
   });
 
   messaging.onMessage('friends:updateCache', async () => {
-    await fetchAndCacheFriends();
+    // Purpose: To silently refresh the cache in the background when the UI has already displayed cached data. This is the "warm start" or "subsequent clicks" scenario.
+    await fetchAndCacheFriends(); // This message is the "Hey, I'm just letting you know it's a good time to refresh the data for next time, but don't make me wait" request.
   });
 
   messaging.onMessage('summarize:video', () => {
