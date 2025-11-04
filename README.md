@@ -66,3 +66,23 @@ SHAREYT
 | |----firebase.ts
 | |----messaging.ts
 ```
+
+## Auth and billing notes
+
+- Firebase Authentication vs Identity Platform
+  - Plain Firebase Authentication (default) does not charge per monthly active user (MAU) for common providers (email/password, Google, etc.). Phone Auth is billed per verification.
+  - Authentication with Identity Platform (the Google Cloud upgrade) is billed by MAU: each distinct account that successfully signs in at least once in a month counts as 1 MAU (free tier applies, then charges).
+  - How to check which you’re on: Firebase Console → Authentication → Settings. If Identity Platform is enabled (also visible in Google Cloud Console → Identity Platform), MAU pricing applies.
+
+- Does `admin.auth().getUser(uid)` cost a Firestore read?
+  - No. It calls the Firebase Authentication Admin API, not Firestore. There are no Firestore read charges from this call. Normal Cloud Functions billing still applies.
+  - If you need many users at once, prefer `admin.auth().getUsers([...])` (batch up to 100) to reduce round trips, or maintain a minimal “profiles” document in Firestore for bulk reads.
+
+- What does `listUsers()` do?
+  - `admin.auth().listUsers(maxResults?, pageToken?)` iterates Auth users (not Firestore) and returns user records (uid, email, displayName, providers, customClaims, metadata, etc.).
+  - It’s paginated (up to 1000 per page). There’s no server-side filtering/sorting—iterate and filter client-side.
+  - Costs/rate limits are Auth API related, not Firestore reads, and it doesn’t create MAUs by itself.
+  - Common use cases: exports/migrations, audits, backfills (e.g., creating Firestore profile docs from Auth), cleaning up disabled users.
+
+- Enforcing callable auth
+  - Callable functions like `getUserProfile` can enforce signed-in callers with `if (!context.auth) throw new HttpsError('unauthenticated', ...)`. The Admin SDK inside the function is still privileged regardless of Firestore Security Rules.
