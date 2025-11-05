@@ -303,3 +303,74 @@ export const getUserProfile = functions.https.onCall(async (data) => {
     throw new functions.https.HttpsError('not-found', 'User not found');
   }
 });
+
+export const batchGetUserProfiles = functions.https.onCall(
+  async (data, context) => {
+    // Require auth
+    if (!context.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'Login required');
+    }
+
+    const raw = data?.uids;
+    if (!Array.isArray(raw) || raw.length === 0) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'uids must be a non-empty array',
+      );
+    }
+
+    // Sanitize and de-duplicate
+    const uids = raw
+      .filter((u: unknown): u is string => typeof u === 'string')
+      .map((u) => u.trim())
+      .filter(Boolean);
+
+    if (uids.length === 0) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'No valid UIDs provided',
+      );
+    }
+
+    const unique = Array.from(new Set(uids));
+    if (unique.length > 100) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'Max 100 UIDs per request',
+      );
+    }
+
+    // Build identifiers for getUsers
+    const identifiers = unique.map((uid) => ({ uid }));
+
+    const result = await admin.auth().getUsers(identifiers);
+
+    // Map found users by uid
+    const foundMap = new Map(
+      result.users.map((u) => [
+        u.uid,
+        {
+          displayName: u.displayName ?? null,
+          email: u.email ?? null,
+          photoURL: u.photoURL ?? null,
+        },
+      ]),
+    );
+
+    // Return results aligned with the original order
+    const users = uids.map((uid) => {
+      const profile = foundMap.get(uid);
+      return {
+        uid,
+        displayName: profile?.displayName ?? null,
+        email: profile?.email ?? null,
+        photoURL: profile?.photoURL ?? null,
+      };
+    });
+
+    // Also include which unique UIDs were not found
+    const notFound = unique.filter((uid) => !foundMap.has(uid));
+
+    return { users, notFound };
+  },
+);
