@@ -157,11 +157,19 @@ export default defineBackground(() => {
     if (!user?.uid) return [];
 
     try {
-      const getUserProfile = httpsCallable(functions, 'getUserProfile');
       const friendshipDoc = await getDoc(doc(db, 'friendships', user.uid));
       const friendMap = friendshipDoc.data()?.friends || {};
       const friendUids = Object.keys(friendMap);
 
+      if (friendUids.length === 0) {
+        // case where user has empty friends list
+        await storage.setItem('local:friendsList', []);
+        return [];
+      }
+
+      // Old: singular getUserProfile calls
+      /*
+      const getUserProfile = httpsCallable(functions, 'getUserProfile');
       const profilePromises = friendUids.map((uid) => getUserProfile({ uid }));
       const profiles = await Promise.all(profilePromises);
 
@@ -170,6 +178,37 @@ export default defineBackground(() => {
         label: p.data.displayName || p.data.email,
         img: p.data.photoURL || 'https://www.gravatar.com/avatar?d=mp',
       }));
+
+      await storage.setItem('local:friendsList', friendsList);
+      return friendsList;
+      */
+
+      // New: batchGetUserProfiles call
+      const batchGetUserProfiles = httpsCallable(
+        functions,
+        'batchGetUserProfiles',
+      );
+      const res = await batchGetUserProfiles({ uids: friendUids });
+      const { users, notFound } = (res.data ?? {}) as {
+        users: Array<{
+          uid: string;
+          displayName?: string | null;
+          email?: string | null;
+          photoURL?: string | null;
+        }>;
+        notFound?: string[];
+      };
+
+      if (Array.isArray(notFound) && notFound.length > 0) {
+        console.error('Some UIDs not found in Auth:', notFound);
+      }
+
+      const friendsList =
+        (users ?? []).map((u) => ({
+          id: u.uid,
+          label: u.displayName || u.email || u.uid,
+          img: u.photoURL || 'https://www.gravatar.com/avatar?d=mp',
+        })) || [];
 
       await storage.setItem('local:friendsList', friendsList);
       return friendsList;
