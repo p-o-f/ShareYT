@@ -16,7 +16,7 @@ import {
   listenToFriendRequests,
   listenToSuggestedVideos,
 } from '@/utils/listeners';
-import { createChromeNotification } from '@/utils/notifications';
+import { createWebExtensionsNotification } from '@/utils/notifications';
 
 function toSerializedUser(user: User): SerializedUser {
   return {
@@ -123,8 +123,8 @@ export default defineBackground(() => {
 
     await storage.setItem('local:user', serialized);
     messaging.sendMessage('auth:stateChanged', serialized);
+    KeepAliveService.start();
     // Listeners will be started in waitForDBInitialization if user exists
-    createChromeNotification();
   });
 
   messaging.onMessage('auth:getUser', async () => {
@@ -238,6 +238,18 @@ export default defineBackground(() => {
   });
 
   messaging.onMessage('recommend:video', ({ data }) => {
+    console.log('showign notif');
+
+    // console.log('CHROME NOTI');
+    // chrome.notifications.create({
+    //   type: 'basic',
+    //   iconUrl: '/icon/128.png',
+    //   title: 'Hello!',
+    //   message: 'This is a proper MV3 notification.',
+    // });
+
+    createWebExtensionsNotification();
+
     console.log('in recommending video background');
     const suggestVideo = httpsCallable(functions, 'suggestVideo');
     if (data && data.to && Array.isArray(data.to)) {
@@ -270,4 +282,3 @@ async function waitForDBInitialization() {
 }
 
 waitForDBInitialization();
-createChromeNotification();
