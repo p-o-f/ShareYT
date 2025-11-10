@@ -5,7 +5,7 @@ export function createBrowserNotification(
   //buttons: Array<{ title: string; iconUrl?: string }> = [], // default none
   isClickable: boolean = true, // <-- Whether clicking the body of the notification triggers a notifications.onClicked event
 ) {
-  console.log('Creating MV3 notification');
+  console.log('Creating browser notification');
 
   browser.notifications.create({
     type: 'basic',
