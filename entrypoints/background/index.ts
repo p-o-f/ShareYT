@@ -16,6 +16,7 @@ import {
   listenToFriendRequests,
   listenToSuggestedVideos,
 } from '@/utils/listeners';
+import { createChromeNotification } from '@/utils/notifications';
 
 function toSerializedUser(user: User): SerializedUser {
   return {
@@ -123,6 +124,7 @@ export default defineBackground(() => {
     await storage.setItem('local:user', serialized);
     messaging.sendMessage('auth:stateChanged', serialized);
     // Listeners will be started in waitForDBInitialization if user exists
+    createChromeNotification();
   });
 
   messaging.onMessage('auth:getUser', async () => {
@@ -268,3 +270,4 @@ async function waitForDBInitialization() {
 }
 
 waitForDBInitialization();
+createChromeNotification();
