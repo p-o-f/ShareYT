@@ -16,7 +16,7 @@ import {
   listenToFriendRequests,
   listenToSuggestedVideos,
 } from '@/utils/listeners';
-import { createWebExtensionsNotification } from '@/utils/notifications';
+import { createBrowserNotification } from '@/utils/notifications';
 
 function toSerializedUser(user: User): SerializedUser {
   return {
@@ -238,18 +238,6 @@ export default defineBackground(() => {
   });
 
   messaging.onMessage('recommend:video', ({ data }) => {
-    console.log('showign notif');
-
-    // console.log('CHROME NOTI');
-    // chrome.notifications.create({
-    //   type: 'basic',
-    //   iconUrl: '/icon/128.png',
-    //   title: 'Hello!',
-    //   message: 'This is a proper MV3 notification.',
-    // });
-
-    createWebExtensionsNotification();
-
     console.log('in recommending video background');
     const suggestVideo = httpsCallable(functions, 'suggestVideo');
     if (data && data.to && Array.isArray(data.to)) {
