@@ -1,26 +1,33 @@
-export function createChromeNotification() {
-  console.log('Creating Chrome notification');
-  chrome.notifications.create('any-id', {
-    title: 'Item Notification',
-    iconUrl: '/icon/128.png',
-    appIconMaskUrl: '/icon/128.png', // does not show up on MacOS
-    message: 'hi', // does not show in this type
-    contextMessage: 'hello from ShareYT', // shows up on MacOS
-    type: 'list',
-    items: [
-      { title: 'Item 1', message: 'Description of Item 1' },
-      { title: 'Item 2', message: 'Description of Item 2' },
-    ],
-    buttons: [],
+export function createBrowserNotification(
+  title: string = 'Default Title',
+  message: string = 'Default Message',
+  //contextMessage: string = '', // default none
+  //buttons: Array<{ title: string; iconUrl?: string }> = [], // default none
+  isClickable: boolean = true, // <-- Whether clicking the body of the notification triggers a notifications.onClicked event
+) {
+  console.log('Creating MV3 notification');
+
+  browser.notifications.create({
+    type: 'basic',
+    iconUrl: '/icon/128.png', // points to /public/icon/128.png
+    title,
+    message,
+    //contextMessage,
+    //buttons,
+    isClickable,
   });
 }
 
-export function createWebExtensionsNotification() {
-  console.log('Creating MV3 notification');
-  browser.notifications.create({
-    type: 'basic',
-    iconUrl: '/icon/128.png',
-    title: 'Hello!',
-    message: 'This is a proper MV3 notification.',
-  });
-}
+/* NOTIFICATION PROPERTIES - good to use what is supported in both browsers
+-----------------------------------------------------------------------------
+Property	        Description	            Chrome	    Firefox
+-----------------------------------------------------------------------------
+title	            Bold header text	    ✅	        ✅
+message	            Main text content	    ✅	        ✅
+contextMessage	    Secondary smaller text	✅	        ⚠️ (often ignored)
+priority	        Controls importance	    ✅	        ⚠️ (ignored)
+eventTime	        Timestamp for ordering	✅	        ⚠️ (ignored)
+buttons	            Up to 2 action buttons	✅	        ❌
+requireInteraction	Stay visible until closed✅	        ❌
+isClickable	        Detect body click	    ✅	        ✅
+*/
