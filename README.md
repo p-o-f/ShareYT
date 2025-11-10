@@ -2,6 +2,13 @@
 
 A cross-browser web extension for sharing YT videos between friends
 
+To update wxt:
+
+```
+npm install wxt@latest --ignore-scripts
+npx wxt prepare
+```
+
 # File Structure
 
 As of 10/27/2025, for feat/sharing-refine
