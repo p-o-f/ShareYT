@@ -5,6 +5,13 @@ export default defineConfig({
     '@wxt-dev/module-react',
     // '@wxt-dev/auto-icons', // for later, if can get it working
   ],
+
+  webExt: {
+    chromiumArgs: ['--disable-blink-features=AutomationControlled'], // in dev mode, helps fix unsecure issue with Chromium login
+    // see this for more info:
+    // https://github.com/wxt-dev/wxt/issues/1971
+    // https://github.com/wxt-dev/wxt/issues/1890
+  },
   manifest: ({ manifestVersion }) => {
     return {
       permissions: ['identity', 'offscreen', 'storage', 'notifications'],
