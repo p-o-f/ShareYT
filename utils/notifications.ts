@@ -14,3 +14,13 @@ export function createChromeNotification() {
     buttons: [],
   });
 }
+
+export function createWebExtensionsNotification() {
+  console.log('Creating MV3 notification');
+  browser.notifications.create({
+    type: 'basic',
+    iconUrl: '/icon/128.png',
+    title: 'Hello!',
+    message: 'This is a proper MV3 notification.',
+  });
+}
