@@ -11,6 +11,11 @@ interface MessagingProtocol {
   'summarize:video': () => string;
   'friends:get': () => any[]; // Add this line
   'friends:updateCache': () => void;
+  'notification:create': (
+    title: string,
+    message: string,
+    isClickable: boolean,
+  ) => void;
 
   // Background->UI messages
   'auth:stateChanged': (user: SerializedUser | null) => void;

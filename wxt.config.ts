@@ -7,7 +7,7 @@ export default defineConfig({
   ],
 
   webExt: {
-    chromiumArgs: ['--disable-blink-features=AutomationControlled'], // in dev mode, helps fix unsecure issue with Chromium login
+    chromiumArgs: ['--disable-blink-features=AutomationControlled'], // in dev mode, helps fix unsecure issue with Chromium login -- TODO comment out when build for production
     // see this for more info:
     // https://github.com/wxt-dev/wxt/issues/1971
     // https://github.com/wxt-dev/wxt/issues/1890

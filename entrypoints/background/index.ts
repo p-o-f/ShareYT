@@ -127,33 +127,6 @@ export default defineBackground(() => {
     // Listeners will be started in waitForDBInitialization if user exists
   });
 
-  messaging.onMessage('auth:getUser', async () => {
-    const user =
-      await storage.getItem<ReturnType<typeof toSerializedUser>>('local:user');
-    console.log('in messaging, user:', user);
-    return user;
-  });
-
-  messaging.onMessage('auth:signIn', async () => {
-    // The onAuthStateChanged listener in the background script handles the update
-    await performChromeLogin();
-    await storage.setItem('local:isLoggedInGlobal', 1);
-  });
-
-  messaging.onMessage('auth:signInFirefox', async () => {
-    // The onAuthStateChanged listener in the background script handles the update
-    await performFirefoxGoogleLogin();
-    await storage.setItem('local:isLoggedInGlobal', 1);
-  });
-
-  messaging.onMessage('auth:signOut', async () => {
-    // Let onAuthStateChanged handle null broadcast (it does, I think?)
-    await storage.removeItem('local:user');
-    await storage.removeItem('local:isLoggedInGlobal');
-    messaging.sendMessage('auth:stateChanged', null);
-    await signOut(auth);
-  });
-
   async function fetchAndCacheFriends() {
     const user = await storage.getItem<SerializedUser>('local:user');
     if (!user?.uid) return [];
@@ -220,13 +193,40 @@ export default defineBackground(() => {
     }
   }
 
+  messaging.onMessage('auth:getUser', async () => {
+    const user =
+      await storage.getItem<ReturnType<typeof toSerializedUser>>('local:user');
+    console.log('in messaging, user:', user);
+    return user;
+  });
+
+  messaging.onMessage('auth:signIn', async () => {
+    // The onAuthStateChanged listener in the background script handles the update
+    await performChromeLogin();
+    await storage.setItem('local:isLoggedInGlobal', 1);
+  });
+
+  messaging.onMessage('auth:signInFirefox', async () => {
+    // The onAuthStateChanged listener in the background script handles the update
+    await performFirefoxGoogleLogin();
+    await storage.setItem('local:isLoggedInGlobal', 1);
+  });
+
+  messaging.onMessage('auth:signOut', async () => {
+    // Let onAuthStateChanged handle null broadcast (it does, I think?)
+    await storage.removeItem('local:user');
+    await storage.removeItem('local:isLoggedInGlobal');
+    messaging.sendMessage('auth:stateChanged', null);
+    await signOut(auth);
+  });
+
   // Purpose: To get the friends list when there is nothing in the cache. This is the "cold start" or "first time" scenario.
   messaging.onMessage('friends:get', async () => {
     return fetchAndCacheFriends(); // This message is the "I need data now, and I'm willing to wait for it" request.
   });
 
+  // Purpose: To silently refresh the cache in the background when the UI has already displayed cached data. This is the "warm start" or "subsequent clicks" scenario.
   messaging.onMessage('friends:updateCache', async () => {
-    // Purpose: To silently refresh the cache in the background when the UI has already displayed cached data. This is the "warm start" or "subsequent clicks" scenario.
     await fetchAndCacheFriends(); // This message is the "Hey, I'm just letting you know it's a good time to refresh the data for next time, but don't make me wait" request.
   });
 
@@ -248,6 +248,11 @@ export default defineBackground(() => {
         title: data.title,
       });
     }
+  });
+
+  messaging.onMessage('notification:create', ({ data }) => {
+    const { title, message, isClickable } = data;
+    createBrowserNotification(title, message, isClickable);
   });
 });
 

@@ -1,7 +1,10 @@
 import { collection, onSnapshot, query, where, doc } from 'firebase/firestore';
 import { db } from './firebase';
 
+// KEEP ALIVE SERVICE
+// --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 /**
+ * This is in the listeners file because it is needed to keep the listeners alive in the background service worker context (mv3).
  * https://developer.chrome.com/blog/longer-esw-lifetimes/
  *
  * To keep the service worker alive, we set up a periodic task using browser api that runs every 20 seconds.
@@ -68,7 +71,10 @@ export const KeepAliveService = {
     return !!keepAliveInterval;
   },
 };
+// --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+// LISTENERS
+// --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 export function listenToFriendships(
   userId: string,
   callback: (snapshot: any) => void,
@@ -97,3 +103,4 @@ export function listenToSuggestedVideos(
   );
   return onSnapshot(q, callback);
 }
+// --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
