@@ -30,6 +30,25 @@ function toSerializedUser(user: User): SerializedUser {
 const oauthClientId =
   '820825199730-3e2tk7rb9pq2d4uao2j16p5hr2p1usi6.apps.googleusercontent.com';
 
+async function waitForDBInitialization() {
+  console.log('Waiting for Firestore initialization...');
+
+  // Await the promise to ensure the object is available
+  const db = await dbReadyPromise;
+
+  const user = await storage.getItem<SerializedUser | null>('local:user');
+
+  if (user?.uid) {
+    console.log('Firestore is ready! Starting listeners for user:', user.uid);
+    //TODO: start listeners here
+    // You can start your listeners here now that the user is confirmed and DB is ready.
+    // For example:
+    // listenToFriendships(user.uid, (snapshot) => { ... });
+  } else {
+    console.log('Firestore is ready, but no user is logged in.');
+  }
+}
+
 const performChromeLogin = async () => {
   /* OLD CODE, BUT IMPORTANT COMMENTS BELOW
   the following code is now deprecated because, for whatever reason, using await firebaseAuth() has two problems: 1) auth token is not persistent in all contexts (and seemingly impossible to extract for a manual bypass)
@@ -124,6 +143,7 @@ export default defineBackground(() => {
     await storage.setItem('local:user', serialized);
     messaging.sendMessage('auth:stateChanged', serialized);
     KeepAliveService.start();
+    waitForDBInitialization();
     // Listeners will be started in waitForDBInitialization if user exists
   });
 
@@ -255,23 +275,3 @@ export default defineBackground(() => {
     createBrowserNotification(title, message, isClickable);
   });
 });
-
-async function waitForDBInitialization() {
-  console.log('Waiting for Firestore initialization...');
-
-  // Await the promise to ensure the object is available
-  const db = await dbReadyPromise;
-
-  const user = await storage.getItem<SerializedUser | null>('local:user');
-
-  if (user?.uid) {
-    console.log('Firestore is ready! Starting listeners for user:', user.uid);
-    // You can start your listeners here now that the user is confirmed and DB is ready.
-    // For example:
-    // listenToFriendships(user.uid, (snapshot) => { ... });
-  } else {
-    console.log('Firestore is ready, but no user is logged in.');
-  }
-}
-
-waitForDBInitialization();
