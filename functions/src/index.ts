@@ -285,6 +285,62 @@ export const suggestVideo = functions.https.onCall(async (data, context) => {
   return { success: true };
 });
 
+export const deleteVideo = functions.https.onCall(async (data, context) => {
+  const uidMe = context.auth?.uid;
+  const { suggestionId } = data;
+
+  // 1. Authentication and validation
+  if (!uidMe) {
+    throw new functions.https.HttpsError('unauthenticated', 'Login required.');
+  }
+  if (!suggestionId || typeof suggestionId !== 'string') {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      'Missing or invalid suggestionId.',
+    );
+  }
+
+  const suggestionRef = db.collection('suggestedVideos').doc(suggestionId);
+
+  try {
+    const suggestionDoc = await suggestionRef.get();
+
+    if (!suggestionDoc.exists) {
+      // The suggestion might have already been deleted by the other user.
+      // This is not an error, so we can return success.
+      console.log(
+        `Suggestion ${suggestionId} not found. It may have already been deleted.`,
+      );
+      return { success: true, message: 'Suggestion already deleted.' };
+    }
+
+    const { from, to } = suggestionDoc.data() as { from: string; to: string };
+
+    // 2. Authorization check: only sender or receiver can delete.
+    if (uidMe !== from && uidMe !== to) {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'You do not have permission to delete this suggestion.',
+      );
+    }
+
+    // 3. Delete the document
+    await suggestionRef.delete();
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting video suggestion:', error);
+    // Re-throw HttpsError or wrap other errors
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+    throw new functions.https.HttpsError(
+      'internal',
+      'An unexpected error occurred while deleting the video suggestion.',
+    );
+  }
+});
+
 export const getUserProfile = functions.https.onCall(async (data) => {
   const { uid } = data;
   if (!uid) {
