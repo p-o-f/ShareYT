@@ -7,11 +7,12 @@ import {
   listenToSuggestedVideos,
 } from '../utils/listeners';
 
-const acceptFriendRequest = httpsCallable(functions, 'acceptFriendRequest');
+// Cloud Functions - all have suffix "Fn" to avoid naming confusion
+const acceptFriendRequestFn = httpsCallable(functions, 'acceptFriendRequest');
 const rejectFriendRequestFn = httpsCallable(functions, 'rejectFriendRequest');
 const removeFriendFn = httpsCallable(functions, 'removeFriend');
 const sendFriendRequestFn = httpsCallable(functions, 'sendFriendRequest');
-const getUserProfile = httpsCallable(functions, 'getUserProfile');
+const getUserProfileFn = httpsCallable(functions, 'getUserProfile');
 
 export default defineUnlistedScript(async () => {
   console.log(
@@ -64,7 +65,7 @@ export default defineUnlistedScript(async () => {
       card.querySelector('.accept-btn').addEventListener('click', async () => {
         try {
           // Call Cloud Function with the sender's UID
-          await acceptFriendRequest({ requestId: senderUid });
+          await acceptFriendRequestFn({ requestId: senderUid });
           console.log('Friend request accepted from:', senderUid);
 
           // Remove the card immediately from UI for seamlessness
@@ -166,7 +167,7 @@ export default defineUnlistedScript(async () => {
         friendIdsToRemove.forEach((id) => delete friends[id]);
 
         const profilesToFetch = friendIdsToAdd.map((uid) =>
-          getUserProfile({ uid }),
+          getUserProfileFn({ uid }),
         );
 
         try {
@@ -218,7 +219,7 @@ export default defineUnlistedScript(async () => {
             // We need the sender's email. This is a downside of the new schema.
             // For now, we'll just show the UID. A better solution would be to
             // include the sender's email in the friendRequests document.
-            const profile = await getUserProfile({ uid });
+            const profile = await getUserProfileFn({ uid });
             const card = renderFriendRequestCard(uid, profile.data.email);
             requestCards.set(uid, card);
             reqGrid.appendChild(card);
