@@ -51,7 +51,7 @@ export const KeepAliveService = {
         const info = await browser.runtime.getPlatformInfo();
         console.log('Keep-alive tick:', info.os);
       } catch (err) {
-        console.warn('Keep-alive failed:', err);
+        console.error('Keep-alive failed:', err);
       } finally {
         keepAliveRunning = false;
       }

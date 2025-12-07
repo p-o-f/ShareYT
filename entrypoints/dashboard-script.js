@@ -272,6 +272,8 @@ export default defineUnlistedScript(async () => {
     // ---------------------------
     // WATCH FRIEND REQUESTS
     // ---------------------------
+    const batchGetUserProfilesFn = httpsCallable(functions, 'batchGetUserProfiles');
+
     function watchFriendRequests() {
       const reqGrid = document.querySelector('.friend-requests-grid');
       const requestCards = new Map();
@@ -289,19 +291,30 @@ export default defineUnlistedScript(async () => {
           }
         });
 
-        // Add cards for new requests
-        for (const uid of newRequestUids) {
-          if (!requestCards.has(uid)) {
-            // We need the sender's email.
-            try {
-              const profile = await getUserProfileFn({ uid });
-              const card = renderFriendRequestCard(uid, profile.data.email);
-              requestCards.set(uid, card);
-              reqGrid.appendChild(card);
-            } catch (err) {
-              console.error('Error fetching profile for friend request:', err);
-            }
+        // Identify which UIDs we actually need to fetch (not already rendered)
+        const uidsToFetch = newRequestUids.filter((uid) => !requestCards.has(uid));
+
+        if (uidsToFetch.length === 0) return;
+
+        try {
+          // Fetch all needed profiles in ONE batch call
+          const response = await batchGetUserProfilesFn({ uids: uidsToFetch });
+          const { users, notFound } = response.data || {};
+
+          if (notFound && notFound.length > 0) {
+            console.warn('Some friend request UIDs not found:', notFound);
           }
+
+          // Render cards for found users
+          (users || []).forEach((user) => {
+             // batchGetUserProfiles returns { uid, displayName, email, photoURL }
+             const card = renderFriendRequestCard(user.uid, user.email);
+             requestCards.set(user.uid, card);
+             reqGrid.appendChild(card);
+          });
+
+        } catch (err) {
+          console.error('Error batch fetching profiles for friend requests:', err);
         }
       };
 

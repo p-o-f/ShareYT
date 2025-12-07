@@ -388,6 +388,7 @@ export const deleteVideo = functions.https.onCall(async (data, context) => {
   }
 });
 
+// Deprecrated in favor of batchGetUserProfiles
 export const getUserProfile = functions.https.onCall(async (data, context) => {
   const { uid } = data;
   const uidMe = context.auth?.uid;
