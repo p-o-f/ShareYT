@@ -22,8 +22,16 @@
 
       .logo {
         font-weight: bold;
-        font-size: 1.2rem;
-        color: #3b4cca;
+        font-size: 1.5rem;
+        color: rgba(239, 57, 57);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .logo img {
+        height: 32px;
+        width: auto;
       }
 
       .profile {
@@ -71,7 +79,7 @@
       .section-title {
         font-size: 1.2rem;
         font-weight: bold;
-        color: #3b4cca;
+        color: rgba(239, 57, 57);
         display: flex;
         align-items: center;
         gap: 0.5rem;
@@ -137,7 +145,7 @@
       .panel-title {
         padding: 1rem;
         font-weight: bold;
-        color: #3b4cca;
+        color: rgba(239, 57, 57);
         border-bottom: 1px solid #ddd;
       }
 
@@ -171,7 +179,10 @@
   </head>
   <body>
     <header>
-      <div class="logo">ShareYT</div>
+      <div class="logo">
+        <img src="/icon/128.png" alt="ShareYT Logo" />
+        ShareYT
+      </div>
       <div class="profile">
         <img id="profile-picture" src="" alt="Profile Picture" />
         <span id="profile-username"></span>
