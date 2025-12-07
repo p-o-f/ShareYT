@@ -2,7 +2,7 @@
   "name": "ShareYT",
   "description": "What is this extension: ShareYT browser extension intended for sharing YT videos with friends.",
   "private": true,
-  "version": "0.0.2",
+  "version": "0.0.3",
   "type": "module",
   "scripts": {
     "dev": "wxt",
