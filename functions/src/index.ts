@@ -1,7 +1,7 @@
 import { setGlobalOptions } from 'firebase-functions/v2/options';
 import * as functions from 'firebase-functions/v1';
 import * as admin from 'firebase-admin';
-import * as crypto from 'crypto';
+
 
 setGlobalOptions({ maxInstances: 10 });
 
@@ -14,18 +14,27 @@ firebase deploy --only functions
 
 */
 
-export const createEmailHash = functions.auth.user().onCreate(async (user) => {
-  if (!user.email || !user.uid) return;
+export const searchUsersByEmail = functions.https.onCall(async (data, context) => {
+  const { email } = data;
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Login required');
+  }
+  if (!email || typeof email !== 'string') {
+    throw new functions.https.HttpsError('invalid-argument', 'Invalid email');
+  }
 
-  const hash = crypto
-    .createHash('sha256')
-    .update(user.email.toLowerCase())
-    .digest('hex');
-
-  await admin.firestore().collection('emailHashes').doc(hash).set({
-    uid: user.uid,
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-  });
+  try {
+    const userRecord = await admin.auth().getUserByEmail(email);
+    return {
+      uid: userRecord.uid,
+      email: userRecord.email,
+      displayName: userRecord.displayName,
+      photoURL: userRecord.photoURL,
+    };
+  } catch {
+    // Return null if not found, rather than throwing, to let the client handle it gracefully
+    return null;
+  }
 });
 
 export const sendFriendRequest = functions.https.onCall(
@@ -217,6 +226,44 @@ export const removeFriend = functions.https.onCall(async (data, context) => {
     });
   });
 
+  // CASCADE DELETION: Delete all videos shared between these two users
+  try {
+    const videosRef = db.collection('suggestedVideos');
+
+    // Query 1: Videos sent by Me to Friend
+    const sentByMe = await videosRef
+      .where('from', '==', uidMe)
+      .where('to', '==', friendUid)
+      .get();
+
+    // Query 2: Videos sent by Friend to Me
+    const sentByFriend = await videosRef
+      .where('from', '==', friendUid)
+      .where('to', '==', uidMe)
+      .get();
+
+    const batch = db.batch();
+    let deleteCount = 0;
+
+    sentByMe.docs.forEach((doc) => {
+      batch.delete(doc.ref);
+      deleteCount++;
+    });
+
+    sentByFriend.docs.forEach((doc) => {
+      batch.delete(doc.ref);
+      deleteCount++;
+    });
+
+    if (deleteCount > 0) {
+      await batch.commit();
+      console.log(`Deleted ${deleteCount} shared videos between ${uidMe} and ${friendUid}.`);
+    }
+  } catch (err) {
+    console.error('Error performing cascade deletion of videos:', err);
+    // We don't throw here because the main action (removing friend) succeeded.
+  }
+
   return { success: true };
 });
 
@@ -341,10 +388,34 @@ export const deleteVideo = functions.https.onCall(async (data, context) => {
   }
 });
 
-export const getUserProfile = functions.https.onCall(async (data) => {
+export const getUserProfile = functions.https.onCall(async (data, context) => {
   const { uid } = data;
+  const uidMe = context.auth?.uid;
+
+  if (!uidMe) {
+    throw new functions.https.HttpsError('unauthenticated', 'Login required');
+  }
   if (!uid) {
     throw new functions.https.HttpsError('invalid-argument', 'Missing uid');
+  }
+
+  // Security Check: Ensure the requester is connected to the target user
+  if (uid !== uidMe) {
+    const [myFriendshipDoc, myRequestsDoc] = await Promise.all([
+      db.collection('friendships').doc(uidMe).get(),
+      db.collection('friendRequests').doc(uidMe).get(),
+    ]);
+
+    const isFriend = myFriendshipDoc.data()?.friends?.[uid];
+    const isReceived = myRequestsDoc.data()?.received?.[uid];
+    const isSent = myRequestsDoc.data()?.sent?.[uid];
+
+    if (!isFriend && !isReceived && !isSent) {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'You are not authorized to view this user profile.',
+      );
+    }
   }
 
   try {
@@ -396,8 +467,27 @@ export const batchGetUserProfiles = functions.https.onCall(
       );
     }
 
+    // Security Check: Filter out UIDs that are not friends or pending requests
+    const uidMe = context.auth.uid;
+    const [myFriendshipDoc, myRequestsDoc] = await Promise.all([
+      db.collection('friendships').doc(uidMe).get(),
+      db.collection('friendRequests').doc(uidMe).get(),
+    ]);
+
+    const friends = myFriendshipDoc.data()?.friends || {};
+    const received = myRequestsDoc.data()?.received || {};
+    const sent = myRequestsDoc.data()?.sent || {};
+
+    const authorizedUids = unique.filter(
+      (uid) => uid === uidMe || friends[uid] || received[uid] || sent[uid],
+    );
+
+    if (authorizedUids.length === 0) {
+      return { users: [], notFound: unique };
+    }
+
     // Build identifiers for getUsers
-    const identifiers = unique.map((uid) => ({ uid }));
+    const identifiers = authorizedUids.map((uid) => ({ uid }));
 
     const result = await admin.auth().getUsers(identifiers);
 

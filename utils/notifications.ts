@@ -7,7 +7,7 @@ export function createBrowserNotification(
 ) {
   console.log('Creating browser notification');
 
-  browser.notifications.create({
+  return browser.notifications.create({
     type: 'basic',
     iconUrl: '/icon/128.png', // points to /public/icon/128.png
     title,

@@ -30,6 +30,142 @@ function toSerializedUser(user: User): SerializedUser {
 const oauthClientId =
   '820825199730-3e2tk7rb9pq2d4uao2j16p5hr2p1usi6.apps.googleusercontent.com';
 
+// Store unsubscribe functions to clean up listeners on logout
+let unsubscribeFriendships: (() => void) | null = null;
+let unsubscribeFriendRequests: (() => void) | null = null;
+let unsubscribeSuggestedVideosSender: (() => void) | null = null;
+let unsubscribeSuggestedVideosReceiver: (() => void) | null = null;
+
+function stopListeners() {
+  console.log('Cleaning up previous background listeners...');
+  if (unsubscribeFriendships) {
+    unsubscribeFriendships();
+    unsubscribeFriendships = null;
+  }
+  if (unsubscribeFriendRequests) {
+    unsubscribeFriendRequests();
+    unsubscribeFriendRequests = null;
+  }
+  if (unsubscribeSuggestedVideosSender) {
+    unsubscribeSuggestedVideosSender();
+    unsubscribeSuggestedVideosSender = null;
+  }
+  if (unsubscribeSuggestedVideosReceiver) {
+    unsubscribeSuggestedVideosReceiver();
+    unsubscribeSuggestedVideosReceiver = null;
+  }
+}
+
+async function startListeners(userId: string) {
+  console.log('Starting background listeners for user:', userId);
+  stopListeners(); // Ensure no duplicates
+
+  // 1. Listen to Friendships
+  unsubscribeFriendships = listenToFriendships(userId, async (snapshot) => {
+    console.log('Friendship update detected in background.');
+    // When friendships change, we re-fetch the profiles and update the cache
+    await fetchAndCacheFriends();
+  });
+
+  // 2. Listen to Friend Requests
+  unsubscribeFriendRequests = listenToFriendRequests(userId, (snapshot) => {
+    const receivedRequests = snapshot.data()?.received || {};
+    // Store directly to storage
+    storage.setItem('local:friendRequests', receivedRequests);
+    console.log('Friend requests updated in background:', Object.keys(receivedRequests).length);
+  });
+
+  // 3. Listen to Suggested Videos (Receiver)
+  let initialReceiverLoad = true;
+  unsubscribeSuggestedVideosReceiver = listenToSuggestedVideos(userId, 'receiver', async (snapshot) => {
+    const videos: any[] = [];
+    snapshot.forEach((doc: any) => {
+      videos.push({ id: doc.id, ...doc.data() });
+    });
+    storage.setItem('local:suggestedVideos', videos);
+    console.log('Suggested videos (receiver) updated in background:', videos.length);
+
+    // Notification Logic
+    if (!initialReceiverLoad) {
+      snapshot.docChanges().forEach(async (change: any) => {
+        if (change.type === 'added') {
+          const data = change.doc.data();
+          const fromUid = data.from;
+          const videoTitle = data.title || 'a video';
+
+          // Get sender name
+          const friendsList = (await storage.getItem('local:friendsList')) || [];
+          // @ts-ignore
+          const friend = friendsList.find((f: any) => f.id === fromUid);
+          const senderName = friend?.label || friend?.displayName || friend?.email || 'Someone';
+
+          const notifId = await createBrowserNotification(
+            'New Video Shared',
+            `${senderName} shared: "${videoTitle}"`,
+            true
+          );
+
+          console.log('Notification ID:', notifId);
+
+          if (notifId && data.videoId) {
+            console.log()
+            const url = `https://www.youtube.com/watch?v=${data.videoId}`;
+            notificationMap.set(String(notifId), url);
+            console.log(notificationMap);
+          }
+        }
+      });
+    }
+    initialReceiverLoad = false;
+  });
+
+  // 4. Listen to Suggested Videos (Sender) - Optional, but good for "Sent" tab
+  unsubscribeSuggestedVideosSender = listenToSuggestedVideos(userId, 'sender', (snapshot) => {
+    const videos: any[] = [];
+    snapshot.forEach((doc: any) => {
+      videos.push({ id: doc.id, ...doc.data() });
+    });
+    storage.setItem('local:sentVideos', videos);
+    console.log('Sent videos updated in background:', videos.length);
+  });
+}
+
+function createTab(url: string) {
+  if (typeof browser !== "undefined" && browser.tabs) {
+    // Firefox / Promise-based
+    browser.tabs.create({ url }).then(tab => {
+      console.log("created tab", tab);
+    });
+  } else if (typeof chrome !== "undefined" && chrome.tabs) {
+    // Chrome / callback-based
+    chrome.tabs.create({ url }, tab => {
+      console.log("created tab", tab);
+    });
+  } else {
+    throw new Error("tabs API not available");
+  }
+}
+
+
+// ---------------------------
+// NOTIFICATION CLICK HANDLER
+// ---------------------------
+const notificationMap = new Map<string, string>(); // ID -> URL
+chrome.notifications.onClicked.addListener((notificationId) => {
+  console.log("notification clicked", notificationId);
+});
+
+browser.notifications.onClicked.addListener((notificationId) => {
+  console.log("notification clicked", notificationId);
+  if (notificationMap.has(notificationId)) {
+    const url = notificationMap.get(notificationId);
+    if (url) {
+      createTab(url);
+      //window.open("https://www.mozilla.org", "_blank");
+    }
+  }
+});
+
 async function waitForDBInitialization() {
   console.log('Waiting for Firestore initialization...');
 
@@ -40,44 +176,13 @@ async function waitForDBInitialization() {
 
   if (user?.uid) {
     console.log('Firestore is ready! Starting listeners for user:', user.uid);
-    //TODO: start listeners here
-    // You can start your listeners here now that the user is confirmed and DB is ready.
-    // For example:
-    // listenToFriendships(user.uid, (snapshot) => { ... });
+    startListeners(user.uid);
   } else {
     console.log('Firestore is ready, but no user is logged in.');
   }
 }
 
 const performChromeLogin = async () => {
-  /* OLD CODE, BUT IMPORTANT COMMENTS BELOW
-  the following code is now deprecated because, for whatever reason, using await firebaseAuth() has two problems: 1) auth token is not persistent in all contexts (and seemingly impossible to extract for a manual bypass)
-  AND... 
-  2) it doesn't trigger the onAuthStateChanged listener in this background script (unknown reason!), which is a problem because it's necessary for Firestore security rules to "pick up" that the user has been auth'd
-  so that db requests can be used in the dashboard's script (e.g. read request for recommend:video)
-  - that is to say, doing "manual work that should be handled by onAuthStateChanged" won't cut it since the Firestore rules still wouldn't see the user as auth'd anyway
-    - also, since the token is not reliably persisted in all contexts --> manual extraction or bypass attempts futile --> and Chrome seems like a black box in seeing where the token persists and where it doesn't
-
-  NOTE:
-  the performChromeLogin() and performFirefoxGoogleLogin() functions are still separate for future maintainability's sake, even though they can now be consolidated into one function
-  - I'm not sure if future mv2 -> mv3 updates or whatever can mess it up, so keeping them separate for now
-
-        const user = await firebaseAuth();
-
-        const serialized = user ? toSerializedUser(user) : null;
-        if (!serialized) {
-          console.error('serializeUser: user is null, cannot serialize.');
-        }
-
-        // TODO: fix the below
-        // manual work that should be handled by onAuthStateChanged but isn't for some reason
-        await storage.setItem('local:user', serialized);
-        messaging.sendMessage('auth:stateChanged', serialized);
-        // end manual work that should be handled by onAuthStateChanged
-        // TODO: ^no need to return anything if it should were handled by onAuthStateChanged, but it isn't...
-
-        return serialized;
-  */
   console.log('performChromeLogin() called in background script');
   try {
     const nonce = Math.floor(Math.random() * 1000000);
@@ -132,6 +237,57 @@ const performFirefoxGoogleLogin = async () => {
   }
 };
 
+// Defined outside so startListeners can use it
+async function fetchAndCacheFriends() {
+  const user = await storage.getItem<SerializedUser>('local:user');
+  if (!user?.uid) return [];
+
+  try {
+    const friendshipDoc = await getDoc(doc(db, 'friendships', user.uid));
+    const friendMap = friendshipDoc.data()?.friends || {};
+    const friendUids = Object.keys(friendMap);
+
+    if (friendUids.length === 0) {
+      // case where user has empty friends list
+      await storage.setItem('local:friendsList', []);
+      return [];
+    }
+
+    // New: batchGetUserProfiles call
+    const batchGetUserProfiles = httpsCallable(
+      functions,
+      'batchGetUserProfiles',
+    );
+    const res = await batchGetUserProfiles({ uids: friendUids });
+    const { users, notFound } = (res.data ?? {}) as {
+      users: Array<{
+        uid: string;
+        displayName?: string | null;
+        email?: string | null;
+        photoURL?: string | null;
+      }>;
+      notFound?: string[];
+    };
+
+    if (Array.isArray(notFound) && notFound.length > 0) {
+      console.error('Some UIDs not found in Auth:', notFound);
+    }
+
+    const friendsList =
+      (users ?? []).map((u) => ({
+        id: u.uid,
+        label: u.displayName || u.email || u.uid,
+        img: u.photoURL || 'https://www.gravatar.com/avatar?d=mp',
+      })) || [];
+
+    await storage.setItem('local:friendsList', friendsList);
+    return friendsList;
+  } catch (e) {
+    console.error('Error fetching friends in background:', e);
+    return [];
+  }
+}
+
 export default defineBackground(() => {
   // ^ Executed when background is loaded
   onAuthStateChanged(auth, async (user) => {
@@ -142,76 +298,15 @@ export default defineBackground(() => {
 
     await storage.setItem('local:user', serialized);
     messaging.sendMessage('auth:stateChanged', serialized);
-    KeepAliveService.start();
-    waitForDBInitialization();
-    // Listeners will be started in waitForDBInitialization if user exists
-  });
 
-  async function fetchAndCacheFriends() {
-    const user = await storage.getItem<SerializedUser>('local:user');
-    if (!user?.uid) return [];
-
-    try {
-      const friendshipDoc = await getDoc(doc(db, 'friendships', user.uid));
-      const friendMap = friendshipDoc.data()?.friends || {};
-      const friendUids = Object.keys(friendMap);
-
-      if (friendUids.length === 0) {
-        // case where user has empty friends list
-        await storage.setItem('local:friendsList', []);
-        return [];
-      }
-
-      // Old: singular getUserProfile calls
-      /*
-      const getUserProfile = httpsCallable(functions, 'getUserProfile');
-      const profilePromises = friendUids.map((uid) => getUserProfile({ uid }));
-      const profiles = await Promise.all(profilePromises);
-
-      const friendsList = profiles.map((p: any, i) => ({
-        id: friendUids[i],
-        label: p.data.displayName || p.data.email,
-        img: p.data.photoURL || 'https://www.gravatar.com/avatar?d=mp',
-      }));
-
-      await storage.setItem('local:friendsList', friendsList);
-      return friendsList;
-      */
-
-      // New: batchGetUserProfiles call
-      const batchGetUserProfiles = httpsCallable(
-        functions,
-        'batchGetUserProfiles',
-      );
-      const res = await batchGetUserProfiles({ uids: friendUids });
-      const { users, notFound } = (res.data ?? {}) as {
-        users: Array<{
-          uid: string;
-          displayName?: string | null;
-          email?: string | null;
-          photoURL?: string | null;
-        }>;
-        notFound?: string[];
-      };
-
-      if (Array.isArray(notFound) && notFound.length > 0) {
-        console.error('Some UIDs not found in Auth:', notFound);
-      }
-
-      const friendsList =
-        (users ?? []).map((u) => ({
-          id: u.uid,
-          label: u.displayName || u.email || u.uid,
-          img: u.photoURL || 'https://www.gravatar.com/avatar?d=mp',
-        })) || [];
-
-      await storage.setItem('local:friendsList', friendsList);
-      return friendsList;
-    } catch (e) {
-      console.error('Error fetching friends in background:', e);
-      return [];
+    if (user) {
+      KeepAliveService.start();
+      waitForDBInitialization(); // This will start listeners
+    } else {
+      stopListeners();
+      KeepAliveService.stop();
     }
-  }
+  });
 
   messaging.onMessage('auth:getUser', async () => {
     const user =
@@ -238,6 +333,7 @@ export default defineBackground(() => {
     await storage.removeItem('local:isLoggedInGlobal');
     messaging.sendMessage('auth:stateChanged', null);
     await signOut(auth);
+    stopListeners(); // Ensure listeners are stopped
   });
 
   // Purpose: To get the friends list when there is nothing in the cache. This is the "cold start" or "first time" scenario.

@@ -1,11 +1,6 @@
-import { onSnapshot, doc, deleteDoc, getDoc } from 'firebase/firestore';
-import { db, hashEmail, functions } from '../utils/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import { db, functions } from '../utils/firebase';
 import { httpsCallable } from 'firebase/functions';
-import {
-  listenToFriendships,
-  listenToFriendRequests,
-  listenToSuggestedVideos,
-} from '../utils/listeners';
 
 // Cloud Functions - all have suffix "Fn" to avoid naming confusion
 const acceptFriendRequestFn = httpsCallable(functions, 'acceptFriendRequest');
@@ -13,6 +8,9 @@ const rejectFriendRequestFn = httpsCallable(functions, 'rejectFriendRequest');
 const removeFriendFn = httpsCallable(functions, 'removeFriend');
 const sendFriendRequestFn = httpsCallable(functions, 'sendFriendRequest');
 const getUserProfileFn = httpsCallable(functions, 'getUserProfile');
+
+// // For manual testing in console, temporary
+// window.getUserProfileFn = getUserProfileFn;
 
 export default defineUnlistedScript(async () => {
   console.log(
@@ -99,9 +97,9 @@ export default defineUnlistedScript(async () => {
         <div class="friend-tile" style="display: flex; align-items: center; justify-content: space-between; padding: 8px 0;">
           <div style="display: flex; align-items: center;">
             <img src="${
-              friendData.photoURL || 'https://www.gravatar.com/avatar?d=mp'
+              friendData.img || friendData.photoURL || 'https://www.gravatar.com/avatar?d=mp'
             }" alt="Profile Picture" style="width: 32px; height: 32px; border-radius: 50%; margin-right: 12px;" />
-            <span>${friendData.displayName || friendData.email}</span>
+            <span>${friendData.label || friendData.displayName || friendData.email}</span>
           </div>
           <button class="remove-friend-btn" style="background-color: #f44336; color: white; border: none; border-radius: 4px; width: 24px; height: 24px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; padding: 0; font-size: 14px;">X</button>
         </div>
@@ -116,7 +114,7 @@ export default defineUnlistedScript(async () => {
           e.stopPropagation();
           if (
             confirm(
-              `Are you sure you want to remove ${friendData.displayName || friendData.email} as a friend?`,
+              `Are you sure you want to remove ${friendData.label || friendData.displayName || friendData.email} as a friend?`,
             )
           ) {
             try {
@@ -132,113 +130,41 @@ export default defineUnlistedScript(async () => {
     }
 
     // ---------------------------
-    // WATCH FRIENDSHIPS
+    // STATE MANAGEMENT
     // ---------------------------
-    function watchFriendships(userId) {
-      //console.log('Calling watchFriendships with userId:', userId);
-      const friendsList = document.getElementById('friends-list');
-      // Use an object to store friend data, keyed by UID, to prevent duplicates
-      const friends = {};
-      let unsub;
+    let friendsState = [];
+    let receiverVideosState = [];
+    let senderVideosState = [];
 
-      const render = () => {
-        friendsList.innerHTML = '';
-        Object.entries(friends).forEach(([uid, friendData]) => {
-          if (friendData) {
-            friendsList.appendChild(renderFriendTile(uid, friendData));
-          }
-        });
-      };
+    // Helper to get name from UID
+    const getName = (uid) => {
+      const friend = friendsState.find((f) => f.id === uid);
+      return friend ? (friend.label || friend.displayName || friend.email) : uid;
+    };
 
-      const handleSnapshot = async (snapshot) => {
-        const friendMap = snapshot.data()?.friends || {};
-        const currentFriendIds = Object.keys(friends);
-        const newFriendIds = Object.keys(friendMap);
-
-        // Find new friends to add
-        const friendIdsToAdd = newFriendIds.filter(
-          (id) => !currentFriendIds.includes(id),
-        );
-        // Find removed friends
-        const friendIdsToRemove = currentFriendIds.filter(
-          (id) => !newFriendIds.includes(id),
-        );
-
-        friendIdsToRemove.forEach((id) => delete friends[id]);
-
-        const profilesToFetch = friendIdsToAdd.map((uid) =>
-          getUserProfileFn({ uid }),
-        );
-
-        try {
-          const profiles = await Promise.all(profilesToFetch);
-          profiles.forEach((result, index) => {
-            const uid = friendIdsToAdd[index];
-            friends[uid] = result.data;
-          });
-
-          if (friendIdsToAdd.length > 0 || friendIdsToRemove.length > 0) {
-            render();
-          }
-        } catch (e) {
-          console.error('Error fetching friend profiles:', e);
-        }
-      };
-
-      if (unsub) unsub(); // Unsubscribe from previous listener if any
-      unsub = listenToFriendships(userId, handleSnapshot);
-
-      return () => {
-        if (unsub) unsub();
-      };
-    }
-
-    // ---------------------------
-    // WATCH FRIEND REQUESTS
-    // ---------------------------
-    function watchFriendRequests() {
-      const reqGrid = document.querySelector('.friend-requests-grid');
-      const requestCards = new Map();
-
-      listenToFriendRequests(userId, async (snapshot) => {
-        const receivedRequests = snapshot.data()?.received || {};
-        const currentRequestUids = Array.from(requestCards.keys());
-        const newRequestUids = Object.keys(receivedRequests);
-
-        // Remove cards for requests that are no longer present
-        currentRequestUids.forEach((uid) => {
-          if (!newRequestUids.includes(uid)) {
-            requestCards.get(uid)?.remove();
-            requestCards.delete(uid);
-          }
-        });
-
-        // Add cards for new requests
-        for (const uid of newRequestUids) {
-          if (!requestCards.has(uid)) {
-            // We need the sender's email. This is a downside of the new schema.
-            // For now, we'll just show the UID. A better solution would be to
-            // include the sender's email in the friendRequests document.
-            const profile = await getUserProfileFn({ uid });
-            const card = renderFriendRequestCard(uid, profile.data.email);
-            requestCards.set(uid, card);
-            reqGrid.appendChild(card);
-          }
-        }
-      });
-    }
+    // Helper to format list of UIDs
+    const getNames = (uids) => {
+      if (!Array.isArray(uids)) return getName(uids);
+      return uids.map(getName).join(', ');
+    };
 
     // ---------------------------
     // VIDEO WATCHERS
     // ---------------------------
     function renderVideoCard(data, role) {
       console.log('Rendering video card for:', data);
-      const label =
-        role === 'receiver'
-          ? `Shared by ${data.from || 'Unknown'}` // TODO fix this, currently just showing UIDs
-          : `Sent to ${data.to || 'Unknown'}`;
+      
+      let label = '';
+      if (role === 'receiver') {
+         label = `Shared by ${getName(data.from)}`;
+      } else {
+         // data.to might be a single UID or array? 
+         // Based on messaging.ts it sends an array. 
+         // But let's handle both just in case.
+         label = `Sent to ${getNames(data.to)}`;
+      }
 
-      const dateObj = data.timestamp?.toDate?.() ?? null;
+      const dateObj = data.timestamp?.toDate?.() ?? (data.timestamp ? new Date(data.timestamp.seconds * 1000) : null);
 
       const formattedDate = dateObj
         ? dateObj.toLocaleDateString('en-US', {
@@ -279,31 +205,118 @@ export default defineUnlistedScript(async () => {
       return card;
     }
 
-    function watchCollection(role) {
+    function renderGrid(role) {
       const videoGrid = document.querySelector(
         `.video-grid[share-type="${role}"]`,
       );
-
       if (!videoGrid) return;
-
-      // Subscribe to real-time updates
-      listenToSuggestedVideos(userId, role, (snapshot) => {
-        videoGrid.innerHTML = '';
-        snapshot.forEach((doc) => {
-          const data = { id: doc.id, ...doc.data() };
-          videoGrid.appendChild(renderVideoCard(data, role));
-        });
+      
+      const videos = role === 'receiver' ? receiverVideosState : senderVideosState;
+      
+      videoGrid.innerHTML = '';
+      videos.forEach((data) => {
+        videoGrid.appendChild(renderVideoCard(data, role));
       });
+    }
+
+    function watchCollection(role) {
+      const key = role === 'receiver' ? 'local:suggestedVideos' : 'local:sentVideos';
+
+      const handleUpdate = (videos) => {
+        if (!videos) return;
+        if (role === 'receiver') receiverVideosState = videos;
+        else senderVideosState = videos;
+        renderGrid(role);
+      };
+
+      // Initial load
+      storage.getItem(key).then(handleUpdate);
+
+      // Watch
+      storage.watch(key, handleUpdate);
     }
 
     watchCollection('receiver');
     watchCollection('sender');
 
+    // ---------------------------
+    // WATCH FRIENDSHIPS
+    // ---------------------------
+    function watchFriendships() {
+      const friendsList = document.getElementById('friends-list');
+
+      const render = (friends) => {
+        if (!friends) return;
+        friendsState = friends; // Update state
+        
+        // Render friends list
+        friendsList.innerHTML = '';
+        friends.forEach((friend) => {
+          friendsList.appendChild(renderFriendTile(friend.id, friend));
+        });
+        
+        // Re-render video grids to update names
+        renderGrid('receiver');
+        renderGrid('sender');
+      };
+
+      // Initial load
+      storage.getItem('local:friendsList').then(render);
+
+      // Watch for changes
+      const unwatch = storage.watch('local:friendsList', render);
+
+      return unwatch;
+    }
+
+    // ---------------------------
+    // WATCH FRIEND REQUESTS
+    // ---------------------------
+    function watchFriendRequests() {
+      const reqGrid = document.querySelector('.friend-requests-grid');
+      const requestCards = new Map();
+
+      const handleUpdate = async (receivedRequests) => {
+        receivedRequests = receivedRequests || {};
+        const currentRequestUids = Array.from(requestCards.keys());
+        const newRequestUids = Object.keys(receivedRequests);
+
+        // Remove cards for requests that are no longer present
+        currentRequestUids.forEach((uid) => {
+          if (!newRequestUids.includes(uid)) {
+            requestCards.get(uid)?.remove();
+            requestCards.delete(uid);
+          }
+        });
+
+        // Add cards for new requests
+        for (const uid of newRequestUids) {
+          if (!requestCards.has(uid)) {
+            // We need the sender's email.
+            try {
+              const profile = await getUserProfileFn({ uid });
+              const card = renderFriendRequestCard(uid, profile.data.email);
+              requestCards.set(uid, card);
+              reqGrid.appendChild(card);
+            } catch (err) {
+              console.error('Error fetching profile for friend request:', err);
+            }
+          }
+        }
+      };
+
+      // Initial load
+      storage.getItem('local:friendRequests').then(handleUpdate);
+
+      // Watch
+      storage.watch('local:friendRequests', handleUpdate);
+    }
+
     // Watch friend requests
     watchFriendRequests();
 
-    // Watch friendships
-    watchFriendships(userId);
+    // Watch friendships (and trigger video re-renders)
+    watchFriendships();
 
     // ---------------------------
     // SEND FRIEND REQUEST
@@ -313,26 +326,32 @@ export default defineUnlistedScript(async () => {
 
     async function sendFriendRequest() {
       const targetEmail = emailInput.value.trim().toLowerCase();
-      console.log('EMAILS', targetEmail);
-      if (!targetEmail || !targetEmail.includes('@gmail.com'))
-        return alert('Please enter a valid Gmail email.');
-      if (targetEmail === userEmail.toLowerCase())
-        return alert("You can't send a request to yourself!");
+      if (!targetEmail) return alert('Please enter an email address.');
 
       try {
-        const emailHash = hashEmail(targetEmail);
-        const uidRef = doc(db, 'emailHashes', emailHash);
-        const otherUserDoc = await getDoc(uidRef);
-
-        if (!otherUserDoc.exists()) {
-          return alert('User with that email does not exist.');
+        // 1. Find the user by email via Cloud Function
+        const searchResult = await httpsCallable(functions, 'searchUsersByEmail')({ email: targetEmail });
+        
+        if (!searchResult || !searchResult.data) {
+          return alert('User not found. They may not have signed up yet.');
         }
-        const toUid = otherUserDoc.data().uid;
 
-        // Check if already friends
+        const toUid = searchResult.data.uid;
+
+        if (toUid === userId) {
+          return alert("You can't send a friend request to yourself.");
+        }
+
+        // Check if already friends (client-side check for better UX)
         const friendshipDoc = await getDoc(doc(db, 'friendships', userId));
         if (friendshipDoc.exists() && friendshipDoc.data().friends?.[toUid]) {
           return alert('You are already friends with this user.');
+        }
+
+        // Check if request already sent
+        const myRequestsDoc = await getDoc(doc(db, 'friendRequests', userId));
+        if (myRequestsDoc.exists() && myRequestsDoc.data().sent?.[toUid]) {
+          return alert('You have already sent a friend request to this user.');
         }
 
         await sendFriendRequestFn({ toUid });
