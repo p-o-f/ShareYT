@@ -3,14 +3,12 @@
 A cross-browser web extension for sharing YT videos between friends
 
 To update wxt:
-
 ```
 npm install wxt@latest --ignore-scripts
 npx wxt prepare
 ```
 
 To update Firebase Admin SDK:
-
 ```
 npm install firebase-admin@latest
 ```
@@ -18,6 +16,13 @@ npm install firebase-admin@latest
 To update version for Chrome/Mozilla web store:
 ```
 npm version patch
+```
+
+To run development server:
+```
+npm run dev (for Chrome)
+OR
+npm run dev:firefox (for Firefox)
 ```
 
 # Architecture Updates (Dec 2025)

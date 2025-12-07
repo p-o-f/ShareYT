@@ -8,6 +8,7 @@ const rejectFriendRequestFn = httpsCallable(functions, 'rejectFriendRequest');
 const removeFriendFn = httpsCallable(functions, 'removeFriend');
 const sendFriendRequestFn = httpsCallable(functions, 'sendFriendRequest');
 const getUserProfileFn = httpsCallable(functions, 'getUserProfile');
+const deleteVideoFn = httpsCallable(functions, 'deleteVideo');
 
 // // For manual testing in console, temporary
 // window.getUserProfileFn = getUserProfileFn;
@@ -205,18 +206,182 @@ export default defineUnlistedScript(async () => {
       return card;
     }
 
+    function renderGroupedSenderVideoCard(groupData) {
+      // groupData: { videoId, title, thumbnailUrl, recipients: [{to, timestamp, docId}, ...] }
+      if (!groupData.recipients || groupData.recipients.length === 0) return null;
+
+      // Sort by timestamp asc (oldest shared first)
+      groupData.recipients.sort((a, b) => a.timestamp - b.timestamp);
+
+      const firstRecipient = getName(groupData.recipients[0].to);
+      const otherCount = groupData.recipients.length - 1;
+
+      let recipientsLabel = `Sent to ${firstRecipient}`;
+      if (otherCount > 0) {
+        recipientsLabel += ` + ${otherCount} other${otherCount > 1 ? 's' : ''}`;
+      }
+
+      // Format date of the LATEST share (or first? let's do first)
+      const firstDateObj = new Date(groupData.recipients[0].timestamp * 1000);
+      const formattedDate = firstDateObj.toLocaleDateString('en-US', {
+        month: 'short', day: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true
+      });
+
+      const html = `
+<div class="video-card" style="display: block; position: relative;">
+  <div class="video-thumbnail" style="width: 100%;">
+    <img src="${groupData.thumbnailUrl}" alt="Video Thumbnail" style="width: 100%; height: auto; display: block;" />
+  </div>
+  <div class="video-info" style="margin-top: 8px;">
+    <strong>${groupData.title || 'Untitled Video'}</strong><br />
+    
+    <!-- Clickable Recipient Label -->
+    <div class="recipients-trigger" style="cursor: pointer; color: #3b4cca; margin-bottom: 4px;">
+       <small>${recipientsLabel} at ${formattedDate}</small> ▾
+    </div>
+
+    <!-- Dropdown (Hidden by default) -->
+    <div class="recipients-dropdown" style="display: none; background: #f9f9f9; border: 1px solid #ddd; padding: 10px; margin-top: 5px; border-radius: 4px; font-size: 0.9em;">
+        <div class="recipients-list" style="margin-bottom: 8px; max-height: 150px; overflow-y: auto;">
+          <!-- Items injected here -->
+        </div>
+        <button class="save-updates-btn" style="width:100%; background:#4caf50; color:white; border:none; padding:5px; cursor:pointer; border-radius:3px;">Save Updates</button>
+    </div>
+
+    <span class="watch-btn" style="float: right; color: #3b4cca; cursor: pointer; margin-top: 5px;">Watch</span>
+  </div>
+</div>
+      `;
+
+      const temp = document.createElement('div');
+      temp.innerHTML = html.trim();
+      const card = temp.firstChild;
+
+      // Watch Button
+      card.querySelector('.watch-btn').addEventListener('click', () => {
+        window.open(`https://www.youtube.com/watch?v=${groupData.videoId}`, '_blank');
+      });
+
+      // Toggle Dropdown
+      const trigger = card.querySelector('.recipients-trigger');
+      const dropdown = card.querySelector('.recipients-dropdown');
+      const listContainer = card.querySelector('.recipients-list');
+      const saveBtn = card.querySelector('.save-updates-btn');
+
+      trigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isHidden = dropdown.style.display === 'none';
+        
+        // Lazy render list items only when opening
+        if (isHidden) {
+          listContainer.innerHTML = ''; // Request freshness
+          groupData.recipients.forEach(r => {
+             const rName = getName(r.to);
+             const rDate = new Date(r.timestamp * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+             
+             const itemRow = document.createElement('div');
+             itemRow.style.cssText = "display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;";
+             
+             // Checkbox is checked by default (representing "Currently Sent")
+             // Unchecking means "Delete/Unsend"
+             itemRow.innerHTML = `
+               <span>${rName} <small style="color:#666">(${rDate})</small></span>
+               <input type="checkbox" class="recipient-checkbox" checked data-doc-id="${r.docId}" />
+             `;
+             listContainer.appendChild(itemRow);
+          });
+        }
+        
+        dropdown.style.display = isHidden ? 'block' : 'none';
+      });
+
+      // SAVE Button Logic (Unsend)
+      saveBtn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          saveBtn.textContent = 'Saving...';
+          saveBtn.disabled = true;
+
+          const checkboxes = listContainer.querySelectorAll('.recipient-checkbox');
+          const toDelete = [];
+          
+          checkboxes.forEach(cb => {
+              if (!cb.checked) {
+                  toDelete.push(cb.getAttribute('data-doc-id'));
+              }
+          });
+
+          if (toDelete.length === 0) {
+             // Nothing to change
+             dropdown.style.display = 'none';
+             saveBtn.textContent = 'Save Updates';
+             saveBtn.disabled = false;
+             return;
+          }
+
+          try {
+             // Process deletions
+             // We can do parallel calls since we don't have a batchDelete cloud function exposing array input yet? 
+             // Or deleteVideoFn accepts just 'id'? Implementation plan said deleteVideo(suggestionId).
+             // Let's do Promise.all
+             await Promise.all(toDelete.map(docId => deleteVideoFn({ suggestionId: docId })));
+             
+             // Success! The background listener will eventually update `senderVideosState` and re-render.
+             // But for instant feedback, we can close dropdown.
+             dropdown.style.display = 'none';
+             
+          } catch (err) {
+              console.error("Error unsending videos:", err);
+              alert("Failed to unsend some videos.");
+          } finally {
+              saveBtn.textContent = 'Save Updates';
+              saveBtn.disabled = false;
+          }
+      });
+
+      return card;
+    }
+
     function renderGrid(role) {
       const videoGrid = document.querySelector(
-        `.video-grid[share-type="${role}"]`,
+        `.video-grid[share-type="${role}"]`
       );
       if (!videoGrid) return;
       
       const videos = role === 'receiver' ? receiverVideosState : senderVideosState;
-      
       videoGrid.innerHTML = '';
-      videos.forEach((data) => {
-        videoGrid.appendChild(renderVideoCard(data, role));
-      });
+
+      if (role === 'receiver') {
+         // Standard rendering
+         videos.forEach((data) => {
+            videoGrid.appendChild(renderVideoCard(data, role));
+         });
+      } else {
+         // Sender: Group By VideoID
+         const groups = {}; // videoId -> { videoId, title, thumbnailUrl, recipients: [] }
+
+         videos.forEach(v => {
+            if (!groups[v.videoId]) {
+               groups[v.videoId] = {
+                  videoId: v.videoId,
+                  title: v.title,
+                  thumbnailUrl: v.thumbnailUrl,
+                  recipients: []
+               };
+            }
+            // Add recipient info
+            groups[v.videoId].recipients.push({
+               to: v.to,
+               timestamp: v.timestamp ? v.timestamp.seconds : Date.now()/1000,
+               docId: v.id // We need the document ID to delete it
+            });
+         });
+
+         // Render groups
+         Object.values(groups).forEach(group => {
+            const card = renderGroupedSenderVideoCard(group);
+            if (card) videoGrid.appendChild(card);
+         });
+      }
     }
 
     function watchCollection(role) {
