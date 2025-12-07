@@ -22,14 +22,39 @@ export default defineUnlistedScript(async () => {
     const user = await storage.getItem('local:user');
     if (!user) {
       // Edge case where user enters direct URL (like chrome-extension://okgeoiihamcnmicnhaojpflilhfhghjp/dashboard.html) without being logged in: show alternate screen
-      // TODO handle the edge case where the user logs out while still on the dashboard page (then user becomes null)
       document.body.innerHTML = `
       <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;">
-        <h2>Please log in to ShareYT first to view your dashboard.</h2>
+        <h2>Please log in to ShareYT first to view your dashboard. If you are logged in, please refresh the page.</h2>
       </div>
     `;
       return;
     }
+
+    //  Edge case where the user logs out while they're still on the dashboard page (then user becomes null)
+    storage.watch('local:user', (user) => {
+      if (!user) {
+          location.reload(); // show dashboard to user again
+          return;
+      }
+    });
+
+    // storage.watch<SerializedUser>(
+    //       'local:user',
+    //       async (currentUser, previousUser) => {
+    //         console.log('User loginStatus changed:', { currentUser, previousUser });
+    
+    //         if (!currentUser && previousUser) {
+    //           // User was previously logged in, now they are logged out
+    //           isLoggedIn = false;
+    //           console.log('isLoggedin status after logout:' + isLoggedIn);
+    //         } else {
+    //           // User was previously logged out, now they are logged in
+    //           isLoggedIn = true;
+    //           console.log('isLoggedin status after login:' + isLoggedIn);
+    //         }
+    //       },
+    //     );
+
     const userEmail = user.email;
     const userId = user.uid;
 
