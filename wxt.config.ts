@@ -30,8 +30,8 @@ export default defineConfig({
           id: 'shareyt-extension@shareyt.com',
           strict_min_version: '115.0',
           "data_collection_permissions": {
-            "collects_telemetry": true, // data sent to Firestore is not collected by Mozilla
-            "required": true // telemetry is essential for the extension to function, as Firestore is used as an intermediary database
+            "optional": ["technicalAndInteraction"], // data sent to Firestore is not collected by Mozilla
+            "required": ["none"]
           }
         },
       },
