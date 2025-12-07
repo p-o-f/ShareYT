@@ -100,8 +100,8 @@ async function startListeners(userId: string) {
           const senderName = friend?.label || friend?.displayName || friend?.email || 'Someone';
 
           const notifId = await createBrowserNotification(
-            'New Video Shared',
-            `${senderName} shared: "${videoTitle}"`,
+            `New video shared by ${senderName}`,
+            `Click to open: "${videoTitle}"`,
             true
           );
 
