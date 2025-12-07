@@ -83,6 +83,7 @@ export default defineContentScript({
     };
 
     function createDropdown(anchorButton: HTMLElement) {
+      let unwatch: (() => void) | null = null;
       const existing = document.querySelector('#custom-dropdown');
       if (existing) {
         existing.remove();
@@ -194,6 +195,7 @@ export default defineContentScript({
         container.remove();
         document.removeEventListener('click', outsideClickHandler);
         window.removeEventListener('resize', reposition);
+        if (unwatch) unwatch();
 
         const url = window.location.href;
         const getVideoIdFromUrl = (url: string) => {
@@ -280,6 +282,7 @@ export default defineContentScript({
           container.remove();
           document.removeEventListener('click', outsideClickHandler);
           window.removeEventListener('resize', reposition);
+          if (unwatch) unwatch();
         }
       }
       setTimeout(() => {
@@ -405,28 +408,23 @@ export default defineContentScript({
       };
 
       // --- Main logic ---
+      const handleFriendsUpdate = (friends: any[] | null) => {
+        if (friends && Array.isArray(friends)) {
+          populateFriends(friends);
+        }
+      };
+
       storage.getItem('local:friendsList').then((cachedFriends) => {
         if (cachedFriends && Array.isArray(cachedFriends)) {
-          // Render from cache immediately
           populateFriends(cachedFriends);
-          // Then, trigger a background update.
-          messaging.sendMessage('friends:updateCache');
         } else {
-          // No cache, show loading and fetch for the first time.
           itemList.innerHTML =
             '<div style="padding: 8px; text-align: center; color: #666;">Loading friends...</div>';
-          messaging
-            .sendMessage('friends:get')
-            .then((fetchedFriends) => {
-              populateFriends(fetchedFriends);
-            })
-            .catch((err) => {
-              console.error('Failed to fetch friends:', err);
-              itemList.innerHTML =
-                '<div style="padding: 8px; text-align: center; color: #d93025;">Could not load friends.</div>';
-            });
+          messaging.sendMessage('friends:updateCache');
         }
       });
+
+      unwatch = storage.watch('local:friendsList', handleFriendsUpdate);
     }
 
     const injectShareDropdownButton = (): boolean => {
