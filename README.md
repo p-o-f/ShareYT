@@ -9,6 +9,17 @@ npm install wxt@latest --ignore-scripts
 npx wxt prepare
 ```
 
+To update Firebase Admin SDK:
+
+```
+npm install firebase-admin@latest
+```
+
+To update version for Chrome/Mozilla web store:
+```
+npm version patch
+```
+
 # Architecture Updates (Dec 2025)
 
 ### 1. Single Source of Truth
