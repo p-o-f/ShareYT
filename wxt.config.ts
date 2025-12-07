@@ -1,5 +1,7 @@
 import { defineConfig } from 'wxt';
 
+const isDev = process.env.NODE_ENV === 'development';
+
 export default defineConfig({
   modules: [
     '@wxt-dev/module-react',
@@ -7,8 +9,10 @@ export default defineConfig({
   ],
 
   webExt: {
-    chromiumArgs: ['--disable-blink-features=AutomationControlled'], // in dev mode, helps fix unsecure issue with Chromium login -- TODO comment out when build for production
-    // see this for more info:
+    chromiumArgs: isDev
+      ? ['--disable-blink-features=AutomationControlled'] // in dev mode, helps fix unsecure issue with Chromium login - DO NOT use in production
+      : [], // production: no dev flags
+    // see below for more info:
     // https://github.com/wxt-dev/wxt/issues/1971
     // https://github.com/wxt-dev/wxt/issues/1890
   },
@@ -26,7 +30,8 @@ export default defineConfig({
           id: 'shareyt-extension@shareyt.com',
           strict_min_version: '115.0',
           "data_collection_permissions": {
-            "collects_telemetry": true // data sent to Firestore is not collected by Mozilla
+            "collects_telemetry": true, // data sent to Firestore is not collected by Mozilla
+            "required": true // telemetry is essential for the extension to function, as Firestore is used as an intermediary database
           }
         },
       },

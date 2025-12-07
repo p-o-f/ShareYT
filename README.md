@@ -9,9 +9,33 @@ npm install wxt@latest --ignore-scripts
 npx wxt prepare
 ```
 
+# Architecture Updates (Dec 2025)
+
+### 1. Single Source of Truth
+The **Background Script** (`entrypoints/background/index.ts`) is now the single source of truth for all Firestore data.
+-   It maintains real-time listeners for `friendships`, `friendRequests`, and `suggestedVideos`.
+-   It synchronizes this data to `wxt` storage (`local:friendsList`, `local:suggestedVideos`, etc.).
+-   **UI Components** (Dashboard, Content Script) simply `watch` this storage for instant, reactive updates without querying Firestore directly.
+
+### 2. Secure User Lookup
+-   **Old Way**: `emailHashes` collection (deprecated & removed).
+-   **New Way**: `searchUsersByEmail` Cloud Function.
+    -   Securely looks up users via Firebase Admin SDK.
+    -   Prevents email enumeration attacks.
+
+### 3. Smart Notifications
+-   **Video Shared**: When a friend shares a video, the background script detects the *new* addition and triggers a browser notification.
+-   **Clickable**: Clicking the notification instantly opens the shared video in a new tab.
+-   **Spam Prevention**: Notifications are suppressed on initial load/reload; only *live* incoming videos trigger alerts.
+-   **Duplicate Handling**: Re-sharing the same video (same sender, recipient, videoId) overwrites the existing Firestore document. This does *not* trigger a new notification, preventing spam.
+
+### 4. Cascade Deletion
+-   Unfriending a user now triggers a **Cascade Deletion**.
+-   The `removeFriend` Cloud Function automatically deletes all videos shared between the two users (both sent and received) to maintain data hygiene.
+
 # File Structure
 
-As of 10/27/2025, for feat/sharing-refine
+As of 12/6/2025, for feat/sharing-refine
 
 ```
 SHAREYT
@@ -20,11 +44,11 @@ SHAREYT
 | |
 | |----background > Folder for files in background context
 | | |----ai.ts > Contains summarizeVideo() function and firebase Gemini integration (model of choice = Gemini 2.5 Flash Lite)
-| | |----index.ts > Background context code, where user sign in, recommending, and summarizing videos happens [NOTE this is a semi-persistent context]
-| | |----offscreenInteraction.ts > [Legacy code back when signInWithPopup was used for Chrome] Background helper that creates and manages an offscreen document to run Chrome-specific Firebase authentication safely, then cleans it up
+| | |----index.ts > Background context code (Central Data Hub). Handles Auth, Listeners, Notifications.
+| | |----offscreenInteraction.ts > [Legacy]
 | |
 | |----content > Contains the contentscript that is injected when YouTube is detected
-| | |----index.ts
+| | |----index.ts > Uses storage.watch() for reactive dropdown.
 | |
 | |----dashboard > The html for the extension's dashboard page
 | | |----index.html
@@ -41,13 +65,13 @@ SHAREYT
 | | |----LoginForm.tsx
 | | |----main.tsx
 | | |----style.css
-| |----dashboard-script.js > Code for the extension's dashboard page
+| |----dashboard-script.js > Code for the extension's dashboard page (Refactored to use storage)
 |
 |----functions > Contains all custom cloud functions for Firebase, used for safe writes to Firestore
 | |
 | |----src
 |       |
-|       |----index.ts
+|       |----index.ts > Cloud Functions: searchUsersByEmail, removeFriend (cascade), suggestVideo, etc.
 |
 |----public
 | |
@@ -55,15 +79,11 @@ SHAREYT
 | |----icon-----|...(expandable folder, but irrelevant)
 | |
 | |----icon.png > Future icon for ShareYT
-| |----index.html > Standard Firebase Hosting startup page, found at https://video-sync-10531.firebaseapp.com/ -- perhaps I will change this later to a ShareYT website?
+| |----index.html > Standard Firebase Hosting startup page
 | |----signInWithPopup.html > html page for signInWithPopup
 | |----signInWithPopup.js > js file for signInWithPopup
 | |
-| | > Note that signInWithPopup is a seperate website hosted with firebase *, but needs another "firebase config" and initializeApp(firebaseConfig) call because this only context supports CDN imports (at least, I am pretty sure this is the reason)
-| | > This is actually no longer used since the sign in mechanism changed for Chrome from signInWithPopup to now using manual OAuth...
-| | > TODO - check how to implement Firebase app check - if it is still needed and if so, how to do this
-| |
-| |----wxt.svg > Default wxt logo, will be changed later
+| |----wxt.svg > Default wxt logo
 |
 |
 |----types > Contains the type definitions for SerializedUser and VideoRecommendation (how users/videos are stored)
@@ -72,6 +92,8 @@ SHAREYT
 |----utils
 | |----firebase.ts
 | |----messaging.ts
+| |----listeners.ts > Reusable Firestore listener definitions (used by background script).
+| |----notifications.ts > Browser notification utility (Cross-browser support).
 ```
 
 ## Auth and billing notes
