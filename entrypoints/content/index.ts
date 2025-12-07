@@ -1,5 +1,12 @@
 import { SerializedUser } from '@/types/types';
 
+function getChannelName() {
+  const channelEl =
+    document.querySelector('#owner-name a') ||
+    document.querySelector('ytd-channel-name a');
+  return channelEl?.textContent?.trim() || 'Unknown Channel';
+}
+
 export default defineContentScript({
   matches: ['*://*.youtube.com/*'], // TODO handle YT shorts format later
   runAt: 'document_idle',
@@ -41,14 +48,15 @@ export default defineContentScript({
 
       // Logic for when button is clicked
       button.onclick = async () => {
-        const title = document.title;
+        const title = document.title.replace(" - YouTube", "");
         const url = window.location.href;
 
         // Try to find the channel name element (usually in the metadata section; doesn't work for iframes rn)
-        const channelEl =
-          document.querySelector('#owner-name a') ||
-          document.querySelector('ytd-channel-name a');
-        const channelName = channelEl?.textContent?.trim() || 'Unknown Channel';
+        // const channelEl =
+        //   document.querySelector('#owner-name a') ||
+        //   document.querySelector('ytd-channel-name a');
+        // const channelName = channelEl?.textContent?.trim() || 'Unknown Channel';
+        const channelName = getChannelName();
 
         // Try to find subscriber count element (doesn't work for iframes rn)
         const subsEl =
@@ -72,6 +80,7 @@ export default defineContentScript({
           : 'Thumbnail unavailable';
         console.log('--------------------------------------------------');
         console.log(`Video title: ${title}`);
+        console.log(`Channel name: ${channelName}`);
         console.log(`URL: ${url}`);
         console.log(`Subscribers: ${subscriberCount}`);
         console.log(`Thumbnail URL: ${thumbnailUrl}`);
@@ -209,7 +218,8 @@ export default defineContentScript({
         const thumbnailUrl = videoId
           ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
           : 'Thumbnail unavailable';
-        const title = document.title;
+        const title = document.title.replace(" - YouTube", "") + " - " + getChannelName();
+
 
         messaging.sendMessage('recommend:video', {
           videoId,
