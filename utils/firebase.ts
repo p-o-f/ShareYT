@@ -29,14 +29,14 @@ export const auth = getAuth(app);
 
 export const db = appAlreadyInitialized // fixes the following error:
   ? // [FirebaseError: initializeFirestore() has already been called with different options.
-  // To avoid this error, call initializeFirestore() with the same options as when it was originally called,
-  // or call getFirestore() to return the already initialized instance.] {
-  getFirestore(app)
+    // To avoid this error, call initializeFirestore() with the same options as when it was originally called,
+    // or call getFirestore() to return the already initialized instance.] {
+    getFirestore(app)
   : initializeFirestore(app, {
-    localCache: persistentLocalCache({
-      tabManager: persistentMultipleTabManager(),
-    }),
-  });
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager(),
+      }),
+    });
 
 // Since persistence is configured on creation, we don't need to await
 // a separate persistence function. We can export the DB instance directly,
