@@ -2,7 +2,6 @@ import { setGlobalOptions } from 'firebase-functions/v2/options';
 import * as functions from 'firebase-functions/v1';
 import * as admin from 'firebase-admin';
 
-
 setGlobalOptions({ maxInstances: 10 });
 
 admin.initializeApp();
@@ -14,28 +13,30 @@ firebase deploy --only functions
 
 */
 
-export const searchUsersByEmail = functions.https.onCall(async (data, context) => {
-  const { email } = data;
-  if (!context.auth) {
-    throw new functions.https.HttpsError('unauthenticated', 'Login required');
-  }
-  if (!email || typeof email !== 'string') {
-    throw new functions.https.HttpsError('invalid-argument', 'Invalid email');
-  }
+export const searchUsersByEmail = functions.https.onCall(
+  async (data, context) => {
+    const { email } = data;
+    if (!context.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'Login required');
+    }
+    if (!email || typeof email !== 'string') {
+      throw new functions.https.HttpsError('invalid-argument', 'Invalid email');
+    }
 
-  try {
-    const userRecord = await admin.auth().getUserByEmail(email);
-    return {
-      uid: userRecord.uid,
-      email: userRecord.email,
-      displayName: userRecord.displayName,
-      photoURL: userRecord.photoURL,
-    };
-  } catch {
-    // Return null if not found, rather than throwing, to let the client handle it gracefully
-    return null;
-  }
-});
+    try {
+      const userRecord = await admin.auth().getUserByEmail(email);
+      return {
+        uid: userRecord.uid,
+        email: userRecord.email,
+        displayName: userRecord.displayName,
+        photoURL: userRecord.photoURL,
+      };
+    } catch {
+      // Return null if not found, rather than throwing, to let the client handle it gracefully
+      return null;
+    }
+  },
+);
 
 export const sendFriendRequest = functions.https.onCall(
   async (data, context) => {
@@ -257,7 +258,9 @@ export const removeFriend = functions.https.onCall(async (data, context) => {
 
     if (deleteCount > 0) {
       await batch.commit();
-      console.log(`Deleted ${deleteCount} shared videos between ${uidMe} and ${friendUid}.`);
+      console.log(
+        `Deleted ${deleteCount} shared videos between ${uidMe} and ${friendUid}.`,
+      );
     }
   } catch (err) {
     console.error('Error performing cascade deletion of videos:', err);

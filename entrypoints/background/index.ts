@@ -72,91 +72,109 @@ async function startListeners(userId: string) {
     const receivedRequests = snapshot.data()?.received || {};
     // Store directly to storage
     storage.setItem('local:friendRequests', receivedRequests);
-    console.log('Friend requests updated in background:', Object.keys(receivedRequests).length);
+    console.log(
+      'Friend requests updated in background:',
+      Object.keys(receivedRequests).length,
+    );
   });
 
   // 3. Listen to Suggested Videos (Receiver)
   let initialReceiverLoad = true;
-  unsubscribeSuggestedVideosReceiver = listenToSuggestedVideos(userId, 'receiver', async (snapshot) => {
-    const videos: any[] = [];
-    snapshot.forEach((doc: any) => {
-      videos.push({ id: doc.id, ...doc.data() });
-    });
-    storage.setItem('local:suggestedVideos', videos);
-    console.log('Suggested videos (receiver) updated in background:', videos.length);
-
-    // Notification Logic
-    if (!initialReceiverLoad) {
-      snapshot.docChanges().forEach(async (change: any) => {
-        if (change.type === 'added') {
-          const data = change.doc.data();
-          const fromUid = data.from;
-          const videoTitle = data.title || 'a video';
-
-          // Get sender name
-          const friendsList = (await storage.getItem('local:friendsList')) || [];
-          // @ts-ignore
-          const friend = friendsList.find((f: any) => f.id === fromUid);
-          const senderName = friend?.label || friend?.displayName || friend?.email || 'Someone';
-
-          const notifId = await createBrowserNotification(
-            `${senderName} just sent you a video!`, // <- 70 char limit for this one
-            `Click to open: "${videoTitle}"`,
-            true
-          );
-
-          console.log('Notification ID:', notifId);
-
-          if (notifId && data.videoId) {
-            console.log()
-            const url = `https://www.youtube.com/watch?v=${data.videoId}`;
-            notificationMap.set(String(notifId), url);
-            console.log(notificationMap);
-          }
-        }
+  unsubscribeSuggestedVideosReceiver = listenToSuggestedVideos(
+    userId,
+    'receiver',
+    async (snapshot) => {
+      const videos: any[] = [];
+      snapshot.forEach((doc: any) => {
+        videos.push({ id: doc.id, ...doc.data() });
       });
-    }
-    initialReceiverLoad = false;
-  });
+      storage.setItem('local:suggestedVideos', videos);
+      console.log(
+        'Suggested videos (receiver) updated in background:',
+        videos.length,
+      );
+
+      // Notification Logic
+      if (!initialReceiverLoad) {
+        snapshot.docChanges().forEach(async (change: any) => {
+          if (change.type === 'added') {
+            const data = change.doc.data();
+            const fromUid = data.from;
+            const videoTitle = data.title || 'a video';
+
+            // Get sender name
+            const friendsList =
+              (await storage.getItem('local:friendsList')) || [];
+            // @ts-ignore
+            const friend = friendsList.find((f: any) => f.id === fromUid);
+            const senderName =
+              friend?.label ||
+              friend?.displayName ||
+              friend?.email ||
+              'Someone';
+
+            const notifId = await createBrowserNotification(
+              `${senderName} just sent you a video!`, // <- 70 char limit for this one
+              `Click to open: "${videoTitle}"`,
+              true,
+            );
+
+            console.log('Notification ID:', notifId);
+
+            if (notifId && data.videoId) {
+              console.log();
+              const url = `https://www.youtube.com/watch?v=${data.videoId}`;
+              notificationMap.set(String(notifId), url);
+              console.log(notificationMap);
+            }
+          }
+        });
+      }
+      initialReceiverLoad = false;
+    },
+  );
 
   // 4. Listen to Suggested Videos (Sender) - Optional, but good for "Sent" tab
-  unsubscribeSuggestedVideosSender = listenToSuggestedVideos(userId, 'sender', (snapshot) => {
-    const videos: any[] = [];
-    snapshot.forEach((doc: any) => {
-      videos.push({ id: doc.id, ...doc.data() });
-    });
-    storage.setItem('local:sentVideos', videos);
-    console.log('Sent videos updated in background:', videos.length);
-  });
+  unsubscribeSuggestedVideosSender = listenToSuggestedVideos(
+    userId,
+    'sender',
+    (snapshot) => {
+      const videos: any[] = [];
+      snapshot.forEach((doc: any) => {
+        videos.push({ id: doc.id, ...doc.data() });
+      });
+      storage.setItem('local:sentVideos', videos);
+      console.log('Sent videos updated in background:', videos.length);
+    },
+  );
 }
 
 function createTab(url: string) {
-  if (typeof browser !== "undefined" && browser.tabs) {
+  if (typeof browser !== 'undefined' && browser.tabs) {
     // Firefox / Promise-based
-    browser.tabs.create({ url }).then(tab => {
-      console.log("created tab", tab);
+    browser.tabs.create({ url }).then((tab) => {
+      console.log('created tab', tab);
     });
-  } else if (typeof chrome !== "undefined" && chrome.tabs) {
+  } else if (typeof chrome !== 'undefined' && chrome.tabs) {
     // Chrome / callback-based
-    chrome.tabs.create({ url }, tab => {
-      console.log("created tab", tab);
+    chrome.tabs.create({ url }, (tab) => {
+      console.log('created tab', tab);
     });
   } else {
-    throw new Error("tabs API not available");
+    throw new Error('tabs API not available');
   }
 }
-
 
 // ---------------------------
 // NOTIFICATION CLICK HANDLER
 // ---------------------------
 const notificationMap = new Map<string, string>(); // ID -> URL
 chrome.notifications.onClicked.addListener((notificationId) => {
-  console.log("notification clicked", notificationId);
+  console.log('notification clicked', notificationId);
 });
 
 browser.notifications.onClicked.addListener((notificationId) => {
-  console.log("notification clicked", notificationId);
+  console.log('notification clicked', notificationId);
   if (notificationMap.has(notificationId)) {
     const url = notificationMap.get(notificationId);
     if (url) {

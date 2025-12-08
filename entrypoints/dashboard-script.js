@@ -33,8 +33,8 @@ export default defineUnlistedScript(async () => {
     //  Edge case where the user logs out while they're still on the dashboard page (then user becomes null)
     storage.watch('local:user', (user) => {
       if (!user) {
-          location.reload(); // show dashboard to user again
-          return;
+        location.reload(); // show dashboard to user again
+        return;
       }
     });
 
@@ -42,7 +42,7 @@ export default defineUnlistedScript(async () => {
     //       'local:user',
     //       async (currentUser, previousUser) => {
     //         console.log('User loginStatus changed:', { currentUser, previousUser });
-    
+
     //         if (!currentUser && previousUser) {
     //           // User was previously logged in, now they are logged out
     //           isLoggedIn = false;
@@ -123,7 +123,9 @@ export default defineUnlistedScript(async () => {
         <div class="friend-tile" style="display: flex; align-items: center; justify-content: space-between; padding: 8px 0;">
           <div style="display: flex; align-items: center;">
             <img src="${
-              friendData.img || friendData.photoURL || 'https://www.gravatar.com/avatar?d=mp'
+              friendData.img ||
+              friendData.photoURL ||
+              'https://www.gravatar.com/avatar?d=mp'
             }" alt="Profile Picture" style="width: 32px; height: 32px; border-radius: 50%; margin-right: 12px;" />
             <span>${friendData.label || friendData.displayName || friendData.email}</span>
           </div>
@@ -165,7 +167,7 @@ export default defineUnlistedScript(async () => {
     // Helper to get name from UID
     const getName = (uid) => {
       const friend = friendsState.find((f) => f.id === uid);
-      return friend ? (friend.label || friend.displayName || friend.email) : uid;
+      return friend ? friend.label || friend.displayName || friend.email : uid;
     };
 
     // Helper to format list of UIDs
@@ -179,18 +181,20 @@ export default defineUnlistedScript(async () => {
     // ---------------------------
     function renderVideoCard(data, role) {
       console.log('Rendering video card for:', data);
-      
+
       let label = '';
       if (role === 'receiver') {
-         label = `Shared by ${getName(data.from)}`;
+        label = `Shared by ${getName(data.from)}`;
       } else {
-         // data.to might be a single UID or array? 
-         // Based on messaging.ts it sends an array. 
-         // But let's handle both just in case.
-         label = `Sent to ${getNames(data.to)}`;
+        // data.to might be a single UID or array?
+        // Based on messaging.ts it sends an array.
+        // But let's handle both just in case.
+        label = `Sent to ${getNames(data.to)}`;
       }
 
-      const dateObj = data.timestamp?.toDate?.() ?? (data.timestamp ? new Date(data.timestamp.seconds * 1000) : null);
+      const dateObj =
+        data.timestamp?.toDate?.() ??
+        (data.timestamp ? new Date(data.timestamp.seconds * 1000) : null);
 
       const formattedDate = dateObj
         ? dateObj.toLocaleDateString('en-US', {
@@ -233,7 +237,8 @@ export default defineUnlistedScript(async () => {
 
     function renderGroupedSenderVideoCard(groupData) {
       // groupData: { videoId, title, thumbnailUrl, recipients: [{to, timestamp, docId}, ...] }
-      if (!groupData.recipients || groupData.recipients.length === 0) return null;
+      if (!groupData.recipients || groupData.recipients.length === 0)
+        return null;
 
       // Sort by timestamp asc (oldest shared first)
       groupData.recipients.sort((a, b) => a.timestamp - b.timestamp);
@@ -249,7 +254,11 @@ export default defineUnlistedScript(async () => {
       // Format date of the LATEST share (or first? let's do first)
       const firstDateObj = new Date(groupData.recipients[0].timestamp * 1000);
       const formattedDate = firstDateObj.toLocaleDateString('en-US', {
-        month: 'short', day: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: 'numeric',
+        hour12: true,
       });
 
       const html = `
@@ -284,7 +293,10 @@ export default defineUnlistedScript(async () => {
 
       // Watch Button
       card.querySelector('.watch-btn').addEventListener('click', () => {
-        window.open(`https://www.youtube.com/watch?v=${groupData.videoId}`, '_blank');
+        window.open(
+          `https://www.youtube.com/watch?v=${groupData.videoId}`,
+          '_blank',
+        );
       });
 
       // Toggle Dropdown
@@ -296,71 +308,78 @@ export default defineUnlistedScript(async () => {
       trigger.addEventListener('click', (e) => {
         e.stopPropagation();
         const isHidden = dropdown.style.display === 'none';
-        
+
         // Lazy render list items only when opening
         if (isHidden) {
           listContainer.innerHTML = ''; // Request freshness
-          groupData.recipients.forEach(r => {
-             const rName = getName(r.to);
-             const rDate = new Date(r.timestamp * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-             
-             const itemRow = document.createElement('div');
-             itemRow.style.cssText = "display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;";
-             
-             // Checkbox is checked by default (representing "Currently Sent")
-             // Unchecking means "Delete/Unsend"
-             itemRow.innerHTML = `
+          groupData.recipients.forEach((r) => {
+            const rName = getName(r.to);
+            const rDate = new Date(r.timestamp * 1000).toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+            });
+
+            const itemRow = document.createElement('div');
+            itemRow.style.cssText =
+              'display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;';
+
+            // Checkbox is checked by default (representing "Currently Sent")
+            // Unchecking means "Delete/Unsend"
+            itemRow.innerHTML = `
                <span>${rName} <small style="color:#666">(${rDate})</small></span>
                <input type="checkbox" class="recipient-checkbox" checked data-doc-id="${r.docId}" />
              `;
-             listContainer.appendChild(itemRow);
+            listContainer.appendChild(itemRow);
           });
         }
-        
+
         dropdown.style.display = isHidden ? 'block' : 'none';
       });
 
       // SAVE Button Logic (Unsend)
       saveBtn.addEventListener('click', async (e) => {
-          e.stopPropagation();
-          saveBtn.textContent = 'Saving...';
-          saveBtn.disabled = true;
+        e.stopPropagation();
+        saveBtn.textContent = 'Saving...';
+        saveBtn.disabled = true;
 
-          const checkboxes = listContainer.querySelectorAll('.recipient-checkbox');
-          const toDelete = [];
-          
-          checkboxes.forEach(cb => {
-              if (!cb.checked) {
-                  toDelete.push(cb.getAttribute('data-doc-id'));
-              }
-          });
+        const checkboxes = listContainer.querySelectorAll(
+          '.recipient-checkbox',
+        );
+        const toDelete = [];
 
-          if (toDelete.length === 0) {
-             // Nothing to change
-             dropdown.style.display = 'none';
-             saveBtn.textContent = 'Save Updates';
-             saveBtn.disabled = false;
-             return;
+        checkboxes.forEach((cb) => {
+          if (!cb.checked) {
+            toDelete.push(cb.getAttribute('data-doc-id'));
           }
+        });
 
-          try {
-             // Process deletions
-             // We can do parallel calls since we don't have a batchDelete cloud function exposing array input yet? 
-             // Or deleteVideoFn accepts just 'id'? Implementation plan said deleteVideo(suggestionId).
-             // Let's do Promise.all
-             await Promise.all(toDelete.map(docId => deleteVideoFn({ suggestionId: docId })));
-             
-             // Success! The background listener will eventually update `senderVideosState` and re-render.
-             // But for instant feedback, we can close dropdown.
-             dropdown.style.display = 'none';
-             
-          } catch (err) {
-              console.error("Error unsending videos:", err);
-              alert("Failed to unsend some videos.");
-          } finally {
-              saveBtn.textContent = 'Save Updates';
-              saveBtn.disabled = false;
-          }
+        if (toDelete.length === 0) {
+          // Nothing to change
+          dropdown.style.display = 'none';
+          saveBtn.textContent = 'Save Updates';
+          saveBtn.disabled = false;
+          return;
+        }
+
+        try {
+          // Process deletions
+          // We can do parallel calls since we don't have a batchDelete cloud function exposing array input yet?
+          // Or deleteVideoFn accepts just 'id'? Implementation plan said deleteVideo(suggestionId).
+          // Let's do Promise.all
+          await Promise.all(
+            toDelete.map((docId) => deleteVideoFn({ suggestionId: docId })),
+          );
+
+          // Success! The background listener will eventually update `senderVideosState` and re-render.
+          // But for instant feedback, we can close dropdown.
+          dropdown.style.display = 'none';
+        } catch (err) {
+          console.error('Error unsending videos:', err);
+          alert('Failed to unsend some videos.');
+        } finally {
+          saveBtn.textContent = 'Save Updates';
+          saveBtn.disabled = false;
+        }
       });
 
       return card;
@@ -368,49 +387,51 @@ export default defineUnlistedScript(async () => {
 
     function renderGrid(role) {
       const videoGrid = document.querySelector(
-        `.video-grid[share-type="${role}"]`
+        `.video-grid[share-type="${role}"]`,
       );
       if (!videoGrid) return;
-      
-      const videos = role === 'receiver' ? receiverVideosState : senderVideosState;
+
+      const videos =
+        role === 'receiver' ? receiverVideosState : senderVideosState;
       videoGrid.innerHTML = '';
 
       if (role === 'receiver') {
-         // Standard rendering
-         videos.forEach((data) => {
-            videoGrid.appendChild(renderVideoCard(data, role));
-         });
+        // Standard rendering
+        videos.forEach((data) => {
+          videoGrid.appendChild(renderVideoCard(data, role));
+        });
       } else {
-         // Sender: Group By VideoID
-         const groups = {}; // videoId -> { videoId, title, thumbnailUrl, recipients: [] }
+        // Sender: Group By VideoID
+        const groups = {}; // videoId -> { videoId, title, thumbnailUrl, recipients: [] }
 
-         videos.forEach(v => {
-            if (!groups[v.videoId]) {
-               groups[v.videoId] = {
-                  videoId: v.videoId,
-                  title: v.title,
-                  thumbnailUrl: v.thumbnailUrl,
-                  recipients: []
-               };
-            }
-            // Add recipient info
-            groups[v.videoId].recipients.push({
-               to: v.to,
-               timestamp: v.timestamp ? v.timestamp.seconds : Date.now()/1000,
-               docId: v.id // We need the document ID to delete it
-            });
-         });
+        videos.forEach((v) => {
+          if (!groups[v.videoId]) {
+            groups[v.videoId] = {
+              videoId: v.videoId,
+              title: v.title,
+              thumbnailUrl: v.thumbnailUrl,
+              recipients: [],
+            };
+          }
+          // Add recipient info
+          groups[v.videoId].recipients.push({
+            to: v.to,
+            timestamp: v.timestamp ? v.timestamp.seconds : Date.now() / 1000,
+            docId: v.id, // We need the document ID to delete it
+          });
+        });
 
-         // Render groups
-         Object.values(groups).forEach(group => {
-            const card = renderGroupedSenderVideoCard(group);
-            if (card) videoGrid.appendChild(card);
-         });
+        // Render groups
+        Object.values(groups).forEach((group) => {
+          const card = renderGroupedSenderVideoCard(group);
+          if (card) videoGrid.appendChild(card);
+        });
       }
     }
 
     function watchCollection(role) {
-      const key = role === 'receiver' ? 'local:suggestedVideos' : 'local:sentVideos';
+      const key =
+        role === 'receiver' ? 'local:suggestedVideos' : 'local:sentVideos';
 
       const handleUpdate = (videos) => {
         if (!videos) return;
@@ -438,13 +459,13 @@ export default defineUnlistedScript(async () => {
       const render = (friends) => {
         if (!friends) return;
         friendsState = friends; // Update state
-        
+
         // Render friends list
         friendsList.innerHTML = '';
         friends.forEach((friend) => {
           friendsList.appendChild(renderFriendTile(friend.id, friend));
         });
-        
+
         // Re-render video grids to update names
         renderGrid('receiver');
         renderGrid('sender');
@@ -462,7 +483,10 @@ export default defineUnlistedScript(async () => {
     // ---------------------------
     // WATCH FRIEND REQUESTS
     // ---------------------------
-    const batchGetUserProfilesFn = httpsCallable(functions, 'batchGetUserProfiles');
+    const batchGetUserProfilesFn = httpsCallable(
+      functions,
+      'batchGetUserProfiles',
+    );
 
     function watchFriendRequests() {
       const reqGrid = document.querySelector('.friend-requests-grid');
@@ -482,7 +506,9 @@ export default defineUnlistedScript(async () => {
         });
 
         // Identify which UIDs we actually need to fetch (not already rendered)
-        const uidsToFetch = newRequestUids.filter((uid) => !requestCards.has(uid));
+        const uidsToFetch = newRequestUids.filter(
+          (uid) => !requestCards.has(uid),
+        );
 
         if (uidsToFetch.length === 0) return;
 
@@ -497,14 +523,16 @@ export default defineUnlistedScript(async () => {
 
           // Render cards for found users
           (users || []).forEach((user) => {
-             // batchGetUserProfiles returns { uid, displayName, email, photoURL }
-             const card = renderFriendRequestCard(user.uid, user.email);
-             requestCards.set(user.uid, card);
-             reqGrid.appendChild(card);
+            // batchGetUserProfiles returns { uid, displayName, email, photoURL }
+            const card = renderFriendRequestCard(user.uid, user.email);
+            requestCards.set(user.uid, card);
+            reqGrid.appendChild(card);
           });
-
         } catch (err) {
-          console.error('Error batch fetching profiles for friend requests:', err);
+          console.error(
+            'Error batch fetching profiles for friend requests:',
+            err,
+          );
         }
       };
 
@@ -533,8 +561,11 @@ export default defineUnlistedScript(async () => {
 
       try {
         // 1. Find the user by email via Cloud Function
-        const searchResult = await httpsCallable(functions, 'searchUsersByEmail')({ email: targetEmail });
-        
+        const searchResult = await httpsCallable(
+          functions,
+          'searchUsersByEmail',
+        )({ email: targetEmail });
+
         if (!searchResult || !searchResult.data) {
           return alert('User not found. They may not have signed up yet.');
         }

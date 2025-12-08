@@ -48,7 +48,7 @@ export default defineContentScript({
 
       // Logic for when button is clicked
       button.onclick = async () => {
-        const title = document.title.replace(" - YouTube", "");
+        const title = document.title.replace(' - YouTube', '');
         const url = window.location.href;
 
         // Try to find the channel name element (usually in the metadata section; doesn't work for iframes rn)
@@ -218,8 +218,8 @@ export default defineContentScript({
         const thumbnailUrl = videoId
           ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
           : 'Thumbnail unavailable';
-        const title = document.title.replace(" - YouTube", "") + " - " + getChannelName();
-
+        const title =
+          document.title.replace(' - YouTube', '') + ' - ' + getChannelName();
 
         messaging.sendMessage('recommend:video', {
           videoId,

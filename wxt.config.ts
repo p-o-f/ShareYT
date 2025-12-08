@@ -18,7 +18,7 @@ export default defineConfig({
   },
   manifest: ({ manifestVersion }) => {
     return {
-      permissions: ['identity', 'offscreen', 'storage', 'notifications'],
+      permissions: ['identity', /*'offscreen',*/ 'storage', 'notifications'],
       content_security_policy: {
         extension_pages:
           manifestVersion == 2
@@ -29,10 +29,10 @@ export default defineConfig({
         gecko: {
           id: 'shareyt-extension@shareyt.com',
           strict_min_version: '115.0',
-          "data_collection_permissions": {
-            "optional": ["technicalAndInteraction"], // data sent to Firestore is not collected by Mozilla
-            "required": ["none"]
-          }
+          data_collection_permissions: {
+            optional: ['technicalAndInteraction'], // data sent to Firestore is not collected by Mozilla
+            required: ['none'],
+          },
         },
       },
       web_accessible_resources: [
