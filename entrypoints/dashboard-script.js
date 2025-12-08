@@ -15,7 +15,7 @@ const deleteVideoFn = httpsCallable(functions, 'deleteVideo');
 
 export default defineUnlistedScript(async () => {
   console.log(
-    'Unlisted script running in this manifest version',
+    'Dashboard script running in this manifest version',
     browser.runtime.getManifest().manifest_version,
   );
   async function loadDashboardData() {

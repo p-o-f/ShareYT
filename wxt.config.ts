@@ -37,7 +37,12 @@ export default defineConfig({
       },
       web_accessible_resources: [
         {
-          resources: ['dashboard.html', 'dashboard-script.js'],
+          resources: [
+            'dashboard.html',
+            'dashboard-script.js',
+            'settings.html',
+            'settings-script.js',
+          ],
           matches: ['<all_urls>'],
         },
       ],
