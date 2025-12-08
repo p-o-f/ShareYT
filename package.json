@@ -1,6 +1,6 @@
 {
   "name": "ShareYT",
-  "description": "What is this extension: ShareYT browser extension intended for sharing YT videos with friends.",
+  "description": "A free, cross-platform browser extension that allows you to easily share and react to YouTube videos with your friends.",
   "private": true,
   "version": "0.0.3",
   "type": "module",
