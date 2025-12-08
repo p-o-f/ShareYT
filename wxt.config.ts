@@ -27,7 +27,7 @@ export default defineConfig({
       },
       browser_specific_settings: {
         gecko: {
-          id: 'shareyt-extension@shareyt.com',
+          id: 'shareyt-extension@shareyt.dev',
           strict_min_version: '115.0',
           data_collection_permissions: {
             optional: ['technicalAndInteraction'], // data sent to Firestore is not collected by Mozilla
