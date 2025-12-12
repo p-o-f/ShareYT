@@ -16,6 +16,34 @@ export default defineConfig({
     // https://github.com/wxt-dev/wxt/issues/1971
     // https://github.com/wxt-dev/wxt/issues/1890
   },
+
+  vite: () => ({
+    build: {
+      rollupOptions: {
+        plugins: [
+          {
+            name: 'replace-firebase-appcheck-urls',
+            renderChunk(code, chunk) {
+              // Process all chunks to replace Firebase App Check URL strings
+              // These URLs are embedded in Firebase Functions SDK and trigger MV3 violations
+              const modified = code
+                .replace(/"https:\/\/apis\.google\.com\/js\/api\.js"/g, '""')
+                .replace(/"https:\/\/www\.google\.com\/recaptcha\/api\.js"/g, '""')
+                .replace(/"https:\/\/www\.google\.com\/recaptcha\/enterprise\.js\?render="/g, '""');
+
+              // Only return if we actually made changes
+              if (modified !== code) {
+                console.log(`[MV3 Compliance] Stripped remote URLs from ${chunk.fileName}`);
+                return { code: modified, map: null };
+              }
+              return null;
+            }
+          }
+        ]
+      }
+    }
+  }),
+
   manifest: ({ manifestVersion }) => {
     return {
       permissions: ['identity', /*'offscreen',*/ 'storage', 'notifications'],
