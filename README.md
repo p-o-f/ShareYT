@@ -1,6 +1,13 @@
 # ShareYT - Web Extension
 
 A free, cross-platform browser extension that allows you to easily share and react to YouTube videos with your friends.
+Published to Chrome Web Store, Mozilla Add-ons, and Microsoft Edge.
+```
+https://github.com/aklinker1/publish-browser-extension
+
+to configure:
+npx publish-extension init
+```
 
 # MV3 compliance branch
 
