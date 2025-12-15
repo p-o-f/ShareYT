@@ -1,15 +1,13 @@
-// import { signInWithPopup, GoogleAuthProvider, getAuth } from "firebase/auth";
-// import { initializeApp } from "firebase/app";
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js';
-import {
-  getAuth,
-  GoogleAuthProvider,
-  signInWithPopup,
-} from 'https://www.gstatic.com/firebasejs/11.9.1/firebase-auth.js';
-import {
-  initializeAppCheck,
-  ReCaptchaV3Provider,
-} from 'https://www.gstatic.com/firebasejs/11.9.1/firebase-app-check.js';
+// MV3-Compliant imports using npm packages instead of CDN
+import { initializeApp } from 'firebase/app';
+import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+
+// App Check imports commented out to achieve MV3 compliance
+// These will be replaced with a custom provider implementation in the future
+// import {
+//   initializeAppCheck,
+//   ReCaptchaV3Provider,
+// } from 'firebase/app-check';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyD_YP_cl_lI4eCHTWzuN5_Bjiyb_Y4z7TQ',

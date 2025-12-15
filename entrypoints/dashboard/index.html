@@ -34,6 +34,29 @@
         width: auto;
       }
 
+      .header-right {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }
+
+      .settings-btn {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #666;
+        transition: color 0.2s;
+        padding: 0.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .settings-btn:hover {
+        color: rgba(239, 57, 57);
+      }
+
       .profile {
         display: flex;
         align-items: center;
@@ -183,9 +206,12 @@
         <img src="/icon/128.png" alt="ShareYT Logo" />
         ShareYT
       </div>
-      <div class="profile">
-        <img id="profile-picture" src="" alt="Profile Picture" />
-        <span id="profile-username"></span>
+      <div class="header-right">
+        <button class="settings-btn" id="settings-btn" title="Settings">⚙</button>
+        <div class="profile">
+          <img id="profile-picture" src="" alt="Profile Picture" />
+          <span id="profile-username"></span>
+        </div>
       </div>
     </header>
 
@@ -252,6 +278,13 @@
 
 
     <script type="module">
+      // Settings button navigation
+      const settingsBtn = document.getElementById('settings-btn');
+      settingsBtn?.addEventListener('click', () => {
+        window.location.href = chrome.runtime.getURL('/settings.html');
+      });
+
+      // Load dashboard script
       const script = document.createElement('script');
       script.type = 'module';
       script.src = chrome.runtime.getURL('/dashboard-script.js');
