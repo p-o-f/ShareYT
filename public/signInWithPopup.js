@@ -2,8 +2,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 
-
-
 const firebaseConfig = {
   apiKey: 'AIzaSyD_YP_cl_lI4eCHTWzuN5_Bjiyb_Y4z7TQ',
   authDomain: 'video-sync-10531.firebaseapp.com',
@@ -15,8 +13,6 @@ const firebaseConfig = {
 };
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-
-
 
 // This code runs inside of an iframe in the extension's offscreen document.
 // This gives you a reference to the parent frame, i.e. the offscreen document.
