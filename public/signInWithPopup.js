@@ -1,10 +1,6 @@
 // MV3-Compliant imports using npm packages instead of CDN
 import { initializeApp } from 'firebase/app';
-import {
-  getAuth,
-  GoogleAuthProvider,
-  signInWithPopup,
-} from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 
 // App Check imports commented out to achieve MV3 compliance
 // These will be replaced with a custom provider implementation in the future

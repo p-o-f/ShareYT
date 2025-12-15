@@ -1,20 +1,41 @@
 // LOCAL VERSION = SOURCE OF TRUTH. ENSURE LOCAL VERSION IS IN SYNC WITH FIREBASE CONSOLE RULES, BECAUSE firebase deploy WILL OVERWRITE CONSOLE RULES ALWAYS.
+// To deploy: firebase deploy --only firestore:rules
 
-rules_version='2'
+rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Deny read/write by default
     match /{document=**} {
-      // This rule allows anyone with your database reference to view, edit,
-      // and delete all data in your database. It is useful for getting
-      // started, but it is configured to expire after 30 days because it
-      // leaves your app open to attackers. At that time, all client
-      // requests to your database will be denied.
-      //
-      // Make sure to write security rules for your app before that time, or
-      // else all client requests to your database will be denied until you
-      // update your rules.
-      allow read, write: if request.time < timestamp.date(2025, 7, 26);
+      allow read, write: if false;
+    }
+
+    // Friend Requests:
+    // - Read: Only the user themselves can read their own request document.
+    // - Write: Denied (Handled by Cloud Functions).
+    match /friendRequests/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if false;
+    }
+
+    // Friendships:
+    // - Read: Only the user themselves can read their own friendship document.
+    // - Write: Denied (Handled by Cloud Functions).
+    match /friendships/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if false;
+    }
+
+    // Suggested Videos:
+    // - Read: Users can read suggestions where they are the sender ('from') or the receiver ('to').
+    // - Write: Denied (Handled by Cloud Functions).
+    match /suggestedVideos/{videoId} {
+      allow read: if request.auth != null && (
+        resource.data.from == request.auth.uid || 
+        resource.data.to == request.auth.uid
+      );
+      allow write: if false;
     }
   }
 }

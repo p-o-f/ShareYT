@@ -5,6 +5,7 @@ A free, cross-platform browser extension that allows you to easily share and rea
 # MV3 compliance branch
 
 ## Why This Was Needed
+
 Chrome Web Store rejected the extension (Violation ID: Blue Argon) due to remotely hosted code in Manifest V3. The Firebase Functions SDK (imported from "firebase/functions") contains internal App Check integration code with these URL strings:
 
 https://apis.google.com/js/api.js
@@ -25,23 +26,25 @@ The solution uses a **post-build script** (`strip-firebase-urls.js`) that automa
 **Technical Note**: We tried using Vite/Rollup plugins to strip URLs during the build process, but Firebase SDK is pre-bundled in node_modules, so the URLs only appear in the final output. A post-build script that processes the compiled files is the only reliable approach.
 
 **Changes Made**:
+
 - `signInWithPopup.js`: Converted CDN imports to npm packages, commented out unused App Check imports
 - `package.json`: Updated build script to `wxt build && node strip-firebase-urls.js`
 - `strip-firebase-urls.js`: New post-build script that strips URLs using regex replacement
 
 ## Impact
+
 ✅ Chrome (MV3): Now compliant - URLs automatically stripped during npm run build
 ✅ Firefox (MV2): No changes - Firefox builds remain unaffected
 ✅ Functionality: Firebase Functions and Authentication continue to work normally
 ✅ Future App Check: Can be implemented using MV3-compliant custom provider approach
 
 More info (from my personal research)
+
 - https://stackoverflow.com/questions/79675622/how-to-prevent-firebase-auth-from-injecting-remote-scripts-in-a-manifest-v3-chro
 - https://github.com/firebase/firebase-js-sdk/issues/7617 (found from above ^ stackoverflow post)
 
 - https://github.com/firebase/firebase-js-sdk/issues/9114
 - https://groups.google.com/a/chromium.org/g/chromium-extensions/c/xQmZLc8cu6Q
-
 
 - https://www.reddit.com/r/Firebase/comments/1dzms70/firebase_auth_in_chrome_extension_with_manifest/
 

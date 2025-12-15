@@ -28,20 +28,28 @@ export default defineConfig({
               // These URLs are embedded in Firebase Functions SDK and trigger MV3 violations
               const modified = code
                 .replace(/"https:\/\/apis\.google\.com\/js\/api\.js"/g, '""')
-                .replace(/"https:\/\/www\.google\.com\/recaptcha\/api\.js"/g, '""')
-                .replace(/"https:\/\/www\.google\.com\/recaptcha\/enterprise\.js\?render="/g, '""');
+                .replace(
+                  /"https:\/\/www\.google\.com\/recaptcha\/api\.js"/g,
+                  '""',
+                )
+                .replace(
+                  /"https:\/\/www\.google\.com\/recaptcha\/enterprise\.js\?render="/g,
+                  '""',
+                );
 
               // Only return if we actually made changes
               if (modified !== code) {
-                console.log(`[MV3 Compliance] Stripped remote URLs from ${chunk.fileName}`);
+                console.log(
+                  `[MV3 Compliance] Stripped remote URLs from ${chunk.fileName}`,
+                );
                 return { code: modified, map: null };
               }
               return null;
-            }
-          }
-        ]
-      }
-    }
+            },
+          },
+        ],
+      },
+    },
   }),
 
   manifest: ({ manifestVersion }) => {
