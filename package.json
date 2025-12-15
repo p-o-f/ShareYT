@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "wxt",
     "dev:firefox": "wxt -b firefox",
-    "build": "wxt build && node strip-firebase-urls.js",
+    "build": "wxt build",
     "build:firefox": "wxt build -b firefox",
     "zip": "wxt zip",
     "zip:firefox": "wxt zip -b firefox",
@@ -39,6 +39,7 @@
     "eslint-plugin-react": "^7.37.5",
     "globals": "^16.2.0",
     "prettier": "^3.6.2",
+    "publish-browser-extension": "^4.0.0",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.35.0",
     "wxt": "^0.20.11"

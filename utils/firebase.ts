@@ -10,8 +10,6 @@ import {
 // import { getStorage } from 'firebase/storage';
 // import { sha256 } from 'js-sha256';
 import { getFunctions } from 'firebase/functions';
-// For future MV3-compliant App Check implementation:
-// import { initializeAppCheck, ReCaptchaV3Provider, CustomProvider } from 'firebase/app-check';
 
 const firebaseConfig: FirebaseOptions = {
   apiKey: 'AIzaSyD_YP_cl_lI4eCHTWzuN5_Bjiyb_Y4z7TQ',

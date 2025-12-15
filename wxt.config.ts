@@ -17,37 +17,29 @@ export default defineConfig({
     // https://github.com/wxt-dev/wxt/issues/1890
   },
 
+  hooks: {
+    'build:done': async (wxt) => {
+      console.log('[MV3 Compliance] Post-build hook triggered');
+      const { exec } = await import('node:child_process');
+      const { promisify } = await import('node:util');
+      const execAsync = promisify(exec);
+
+      try {
+        const { stdout, stderr } = await execAsync(
+          'node strip-firebase-urls.js',
+        );
+        if (stdout) console.log(stdout);
+        if (stderr) console.error(stderr);
+      } catch (error) {
+        console.error('[MV3 Compliance] Failed to run strip script:', error);
+      }
+    },
+  },
+
   vite: () => ({
     build: {
       rollupOptions: {
-        plugins: [
-          {
-            name: 'replace-firebase-appcheck-urls',
-            renderChunk(code, chunk) {
-              // Process all chunks to replace Firebase App Check URL strings
-              // These URLs are embedded in Firebase Functions SDK and trigger MV3 violations
-              const modified = code
-                .replace(/"https:\/\/apis\.google\.com\/js\/api\.js"/g, '""')
-                .replace(
-                  /"https:\/\/www\.google\.com\/recaptcha\/api\.js"/g,
-                  '""',
-                )
-                .replace(
-                  /"https:\/\/www\.google\.com\/recaptcha\/enterprise\.js\?render="/g,
-                  '""',
-                );
-
-              // Only return if we actually made changes
-              if (modified !== code) {
-                console.log(
-                  `[MV3 Compliance] Stripped remote URLs from ${chunk.fileName}`,
-                );
-                return { code: modified, map: null };
-              }
-              return null;
-            },
-          },
-        ],
+        // Plugin removed as it was ineffective against pre-bundled Firebase SDK
       },
     },
   }),

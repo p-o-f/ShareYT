@@ -1,6 +1,14 @@
 # ShareYT - Web Extension
 
 A free, cross-platform browser extension that allows you to easily share and react to YouTube videos with your friends.
+Published to Chrome Web Store, Mozilla Add-ons, and Microsoft Edge.
+
+```
+https://github.com/aklinker1/publish-browser-extension
+
+to configure:
+npx publish-extension init
+```
 
 # MV3 compliance branch
 
@@ -247,6 +255,40 @@ The **Background Script** (`entrypoints/background/index.ts`) is now the single 
 
 - Unfriending a user now triggers a **Cascade Deletion**.
 - The `removeFriend` Cloud Function automatically deletes all videos shared between the two users (both sent and received) to maintain data hygiene.
+
+# Security Strategy
+
+This extension employs a **"Zero-Trust Writer"** architecture to ensuring user security and data integrity.
+
+### 1. Read-Only Client (Firestore Rules)
+
+The `firestore.rules` configuration enforces a strict **Default Deny** policy for writes.
+
+- **Writes:** `allow write: if false;` (Global rule). No client can ever write directly to the database.
+- **Reads:** Scoped strictly to data ownership.
+  - `friendRequests`: Only the recipient can read.
+  - `friendships`: Only the owner can read.
+  - `suggestedVideos`: Only the sender or receiver can read.
+
+### 2. Validation via Cloud Functions
+
+All state changes go through **httpsCallable** Cloud Functions (`functions/src/index.ts`). This allows for secure, privileged server-side validation that cannot be bypassed by a modified client.
+
+- **Authentication:** All functions immediately check `if (!context.auth) throw ...`
+- **Authorization:** Functions verify relationships (e.g., `deleteVideo` checks if `uid` matches sender or receiver).
+- **Schema Validation:** Inputs are strictly type-checked before processing.
+
+### 3. Rate Limiting (Roadmap)
+
+To prevent authenticated abuse (e.g., a legitimate user spamming friend requests), we plan to implement a `checkRateLimit` helper in the Cloud Functions.
+
+- **Mechanism:** Write a timestamp to a private `userStats/{uid}` doc on each action.
+- **Check:** Reject requests if the last action was too recent.
+- **Goal:** Prevent cost spikes (DoS) and abuse.
+
+### [FAQ] Why Rate Limiting and not App Check?
+
+While App Check with **reCAPTCHA v3** is theoretically stronger because it measures user interaction (mouse movements, clicks) to detect bots, it requires loading external scripts (`google.com/recaptcha/...`), which is restricted in Manifest V3 extensions.
 
 # File Structure
 
