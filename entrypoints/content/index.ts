@@ -178,6 +178,36 @@ export default defineContentScript({
       footer.style.display = 'flex';
       footer.style.justifyContent = 'flex-end';
       footer.style.marginTop = '8px';
+      footer.style.alignItems = 'flex-end'; // Align bottom so input grows upwards if needed? Actually center is better if single line.
+
+      const leftContainer = document.createElement('div');
+      leftContainer.style.flex = '1';
+      leftContainer.style.marginRight = '8px';
+      leftContainer.style.display = 'flex';
+
+      const reactionInput = document.createElement('textarea');
+      reactionInput.placeholder = 'Add a reaction...';
+      reactionInput.maxLength = 100;
+      reactionInput.rows = 1;
+      reactionInput.style.width = '100%';
+      reactionInput.style.padding = '6px';
+      reactionInput.style.fontSize = '12px';
+      reactionInput.style.border = '1px solid #ccc';
+      reactionInput.style.borderRadius = '4px';
+      reactionInput.style.resize = 'none'; // Disable manual resize
+      reactionInput.style.overflow = 'hidden'; // Hide scrollbar
+      reactionInput.style.fontFamily = 'inherit';
+
+      // Auto-expand logic
+      reactionInput.oninput = () => {
+        reactionInput.style.height = 'auto'; // Reset height
+        reactionInput.style.height = reactionInput.scrollHeight + 'px'; // Set to content height
+        // Trigger reposition to keep dropdown anchored correctly if it grows up/down
+        reposition();
+      };
+
+      leftContainer.appendChild(reactionInput);
+      footer.appendChild(leftContainer);
 
       const confirmBtn = document.createElement('button');
       confirmBtn.textContent = 'Confirm';
@@ -240,6 +270,7 @@ export default defineContentScript({
             to: selectedUids, // Sending array of UIDs
             thumbnailUrl,
             title,
+            reaction: reactionInput.value.trim() || undefined,
           });
         }
       };
