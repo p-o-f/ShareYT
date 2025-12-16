@@ -184,6 +184,7 @@ export default defineContentScript({
       leftContainer.style.flex = '1';
       leftContainer.style.marginRight = '8px';
       leftContainer.style.display = 'flex';
+      leftContainer.style.flexDirection = 'column'; // Vertical stack for input + warning
 
       const reactionInput = document.createElement('textarea');
       reactionInput.placeholder = 'Add a reaction...';
@@ -197,16 +198,35 @@ export default defineContentScript({
       reactionInput.style.resize = 'none'; // Disable manual resize
       reactionInput.style.overflow = 'hidden'; // Hide scrollbar
       reactionInput.style.fontFamily = 'inherit';
+      reactionInput.style.boxSizing = 'border-box'; // Ensure padding doesn't add to width
 
-      // Auto-expand logic
+      // Character limit warning
+      const charLimitWarning = document.createElement('div');
+      charLimitWarning.textContent = '(Character limit reached)';
+      charLimitWarning.style.color = '#d32f2f'; // Reddish
+      charLimitWarning.style.fontSize = '10px';
+      charLimitWarning.style.marginTop = '2px';
+      charLimitWarning.style.display = 'none'; // Hidden by default
+
+      // Auto-expand logic & Character Limit Check
       reactionInput.oninput = () => {
         reactionInput.style.height = 'auto'; // Reset height
         reactionInput.style.height = reactionInput.scrollHeight + 'px'; // Set to content height
+
+        if (reactionInput.value.length >= 100) {
+          charLimitWarning.style.display = 'block';
+          reactionInput.style.borderColor = '#d32f2f';
+        } else {
+          charLimitWarning.style.display = 'none';
+          reactionInput.style.borderColor = '#ccc';
+        }
+
         // Trigger reposition to keep dropdown anchored correctly if it grows up/down
         reposition();
       };
 
       leftContainer.appendChild(reactionInput);
+      leftContainer.appendChild(charLimitWarning);
       footer.appendChild(leftContainer);
 
       const confirmBtn = document.createElement('button');
