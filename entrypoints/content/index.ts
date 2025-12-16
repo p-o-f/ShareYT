@@ -194,39 +194,54 @@ export default defineContentScript({
 
       const updateConfirmBtnState = () => {
         const anySelected = selectedIds.size > 0;
-        confirmBtn.disabled = !anySelected;
-        confirmBtn.style.opacity = anySelected ? '1' : '0.5';
+        const anyPendingDelete = pendingDeleteIds.size > 0;
+        const enable = anySelected || anyPendingDelete;
+
+        confirmBtn.disabled = !enable;
+        confirmBtn.style.opacity = enable ? '1' : '0.5';
+
+        if (anySelected && anyPendingDelete) confirmBtn.textContent = 'Apply Changes';
+        else if (anyPendingDelete) confirmBtn.textContent = 'Unsend Videos';
+        else confirmBtn.textContent = 'Share';
       };
 
       confirmBtn.onclick = () => {
-        const selectedUids = Array.from(selectedIds);
-        console.log('Selected UIDs:', selectedUids);
         container.remove();
         document.removeEventListener('click', outsideClickHandler);
         window.removeEventListener('resize', reposition);
         if (unwatch) unwatch();
 
-        const url = window.location.href;
-        const getVideoIdFromUrl = (url: string) => {
-          const match =
-            url.match(/[?&]v=([^&]+)/) ||
-            url.match(/youtu\.be\/([^?&]+)/) ||
-            url.match(/\/embed\/([^?/?&]+)/);
-          return match ? match[1] : null;
-        };
-        const videoId = getVideoIdFromUrl(url);
-        const thumbnailUrl = videoId
-          ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
-          : 'Thumbnail unavailable';
-        const title =
-          document.title.replace(' - YouTube', '') + ' - ' + getChannelName();
+        // 1. Process Deletions
+        if (pendingDeleteIds.size > 0) {
+          console.log("Processing deletions:", pendingDeleteIds);
+          pendingDeleteIds.forEach(friendUid => {
+            const docId = sentMap.get(friendUid);
+            if (docId) {
+              messaging.sendMessage('video:delete', { suggestionId: docId });
+            }
+          });
+        }
 
-        messaging.sendMessage('recommend:video', {
-          videoId,
-          to: selectedUids, // Sending array of UIDs
-          thumbnailUrl,
-          title,
-        });
+        // 2. Process New Shares
+        if (selectedIds.size > 0) {
+          const selectedUids = Array.from(selectedIds);
+          console.log('Selected UIDs for new share:', selectedUids);
+
+          const url = window.location.href;
+          const videoId = getVideoIdFromUrl(url); // use scoped helper
+          const thumbnailUrl = videoId
+            ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
+            : 'Thumbnail unavailable';
+          const title =
+            document.title.replace(' - YouTube', '') + ' - ' + getChannelName();
+
+          messaging.sendMessage('recommend:video', {
+            videoId,
+            to: selectedUids, // Sending array of UIDs
+            thumbnailUrl,
+            title,
+          });
+        }
       };
 
       container.appendChild(footer);
@@ -301,19 +316,40 @@ export default defineContentScript({
 
       // --- Data Fetching and Population ---
       let items: any[] = [];
+      let sentMap = new Map<string, string>(); // friendUid -> suggestionDocId (for CURRENT video)
+      let pendingDeleteIds = new Set<string>(); // friendUids marked for deletion
+
+      const getVideoIdFromUrl = (url: string) => {
+        const match =
+          url.match(/[?&]v=([^&]+)/) ||
+          url.match(/youtu\.be\/([^?&]+)/) ||
+          url.match(/\/embed\/([^?/?&]+)/);
+        return match ? match[1] : null;
+      };
+      // Get ID once for the session
+      const currentVideoId = getVideoIdFromUrl(window.location.href);
 
       const updateSelectAllState = (visibleFiltered: typeof items) => {
-        const allVisibleSelected =
-          visibleFiltered.length > 0 &&
-          visibleFiltered.every((i) => !i.disabled && selectedIds.has(i.id));
-        const noneVisibleSelected = visibleFiltered.every(
-          (i) => !selectedIds.has(i.id),
-        );
+        // "Select All" only applies to items that are NOT disabled (already shared)
+        const selectableItems = visibleFiltered.filter(i => !sentMap.has(i.id));
 
-        if (allVisibleSelected) {
+        if (selectableItems.length === 0) {
+          selectAllCheckbox.checked = false;
+          selectAllCheckbox.disabled = true;
+          selectAllWrapper.style.opacity = '0.5';
+          return;
+        }
+
+        selectAllCheckbox.disabled = false;
+        selectAllWrapper.style.opacity = '1';
+
+        const allSelected = selectableItems.every(i => selectedIds.has(i.id));
+        const noneSelected = selectableItems.every(i => !selectedIds.has(i.id));
+
+        if (allSelected) {
           selectAllCheckbox.checked = true;
           selectAllCheckbox.indeterminate = false;
-        } else if (noneVisibleSelected) {
+        } else if (noneSelected) {
           selectAllCheckbox.checked = false;
           selectAllCheckbox.indeterminate = false;
         } else {
@@ -333,15 +369,32 @@ export default defineContentScript({
         } else {
           noResults.style.display = 'none';
           filtered.forEach((item) => {
+            const isAlreadyShared = sentMap.has(item.id);
+            const isPendingDelete = pendingDeleteIds.has(item.id);
+
             const row = document.createElement('div');
             row.style.display = 'flex';
             row.style.alignItems = 'center';
-            row.style.marginBottom = '4px';
+            row.style.marginBottom = '6px';
+            row.style.padding = '2px 0';
 
+            // Checkbox
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
-            checkbox.disabled = !!item.disabled;
-            checkbox.checked = selectedIds.has(item.id);
+
+            if (isAlreadyShared) {
+              // UX Decision: Checkbox State vs Server State
+              // Option A: Uncheck box immediately when unsend is clicked (Visual State).
+              // Option B (Selected): Keep box checked but show strikethrough (Server State).
+              // Why: This clearer indicates that the video IS currently shared, and the user is staging a removal.
+              // It prevents confusion about whether the unsend has already happened or not.
+              checkbox.checked = true;
+              checkbox.disabled = true;
+            } else {
+              checkbox.checked = selectedIds.has(item.id);
+              checkbox.disabled = !!item.disabled;
+            }
+
             checkbox.id = `opt-${item.id}`;
             checkbox.onchange = () => {
               if (checkbox.checked) selectedIds.add(item.id);
@@ -363,14 +416,50 @@ export default defineContentScript({
             label.textContent = ` ${item.label}`;
             label.style.marginLeft = '8px';
             label.style.color = '#000';
+            label.style.flex = '1'; // Take up remaining space
+
             if (item.disabled) {
               row.style.opacity = '0.5';
               row.style.cursor = 'not-allowed';
             }
 
+            // STRIKETHROUGH if pending delete
+            if (isPendingDelete) {
+              label.style.textDecoration = 'line-through';
+              label.style.color = '#888';
+            }
+
             row.appendChild(checkbox);
             row.appendChild(img);
             row.appendChild(label);
+
+            // DELETE / UNSEND BUTTON (Only for already shared items)
+            if (isAlreadyShared) {
+              const deleteBtn = document.createElement('button');
+              // If pending delete, show "Undo" (or back arrow), else show "X"
+              deleteBtn.textContent = isPendingDelete ? '↩' : 'X';
+              deleteBtn.title = isPendingDelete ? 'Undo remove' : 'Unsend video';
+              deleteBtn.style.border = 'none';
+              deleteBtn.style.background = 'transparent';
+              deleteBtn.style.color = isPendingDelete ? '#4caf50' : '#f44336'; // Green for undo, Red for X
+              deleteBtn.style.fontWeight = 'bold';
+              deleteBtn.style.cursor = 'pointer';
+              deleteBtn.style.marginLeft = '8px';
+              deleteBtn.style.fontSize = '14px';
+
+              deleteBtn.onclick = (e) => {
+                e.stopPropagation(); // prevent row click?
+                if (isPendingDelete) {
+                  pendingDeleteIds.delete(item.id);
+                } else {
+                  pendingDeleteIds.add(item.id);
+                }
+                renderItems(search.value); // Re-render to show update
+                updateConfirmBtnState();
+              };
+              row.appendChild(deleteBtn);
+            }
+
             itemList.appendChild(row);
           });
         }
@@ -386,12 +475,13 @@ export default defineContentScript({
           item.label.toLowerCase().includes(filter.toLowerCase()),
         );
 
+        // Exclude already shared
+        const selectableItems = visibleItems.filter(i => !sentMap.has(i.id) && !i.disabled);
+
         if (selectAllCheckbox.checked) {
-          visibleItems.forEach(
-            (item) => !item.disabled && selectedIds.add(item.id),
-          );
+          selectableItems.forEach(item => selectedIds.add(item.id));
         } else {
-          visibleItems.forEach((item) => selectedIds.delete(item.id));
+          selectableItems.forEach(item => selectedIds.delete(item.id));
         }
         renderItems(filter);
       };
@@ -408,13 +498,12 @@ export default defineContentScript({
             disabled: true,
           });
         }
-
-        const onlyExampleFriend =
-          items.length === 1 && items[0].id === 'example-friend';
-        selectAllCheckbox.disabled = onlyExampleFriend;
-        selectAllWrapper.style.opacity = onlyExampleFriend ? '0.5' : '1';
-
         renderItems();
+      };
+
+      const refreshData = () => {
+        // Re-run render with current state
+        renderItems(search.value);
       };
 
       // --- Main logic ---
@@ -424,6 +513,26 @@ export default defineContentScript({
         }
       };
 
+      const handleSentVideosUpdate = (rawSentVideos: unknown) => {
+        const sentVideos = rawSentVideos as any[] | null;
+        sentMap.clear();
+        if (sentVideos && Array.isArray(sentVideos) && currentVideoId) {
+          sentVideos.forEach(v => {
+            // If matches current video, add to map
+            if (v.videoId === currentVideoId) {
+              // Schema Decision: Single Recipient vs Array
+              // Option A: 'to' field is an array of UIDs (Group Share).
+              // Option B (Selected): 'to' field is a single UID string (Individual Docs).
+              // Why: The 'suggestVideo' Cloud Function creates a unique document for each recipient
+              // (composite key: from_to_videoId). This simplifies querying and deletion.
+              sentMap.set(v.to, v.id); // Map FriendUID -> DocId
+            }
+          });
+        }
+        refreshData();
+      };
+
+      // Initial Fetch & Watch Friends
       storage.getItem('local:friendsList').then((cachedFriends) => {
         if (cachedFriends && Array.isArray(cachedFriends)) {
           populateFriends(cachedFriends);
@@ -433,8 +542,21 @@ export default defineContentScript({
           messaging.sendMessage('friends:updateCache');
         }
       });
-
       unwatch = storage.watch('local:friendsList', handleFriendsUpdate);
+
+      // Watch Sent Videos
+      storage.getItem('local:sentVideos').then(handleSentVideosUpdate);
+      const unwatchSent = storage.watch('local:sentVideos', handleSentVideosUpdate);
+
+      // Cleanup Strategy: Chained Unwatchers
+      // We have two independent listeners: 'friendsList' and 'sentVideos'.
+      // Instead of managing multiple unwatch variables in the parent scope,
+      // we wrap them into a single cleanup function.
+      const oldUnwatch = unwatch;
+      unwatch = () => {
+        if (oldUnwatch) oldUnwatch();
+        if (unwatchSent) unwatchSent();
+      };
     }
 
     const injectShareDropdownButton = (): boolean => {

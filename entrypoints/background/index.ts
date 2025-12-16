@@ -388,4 +388,9 @@ export default defineBackground(() => {
     const { title, message, isClickable } = data;
     createBrowserNotification(title, message, isClickable);
   });
+
+  messaging.onMessage('video:delete', ({ data }) => {
+    const deleteVideo = httpsCallable(functions, 'deleteVideo');
+    deleteVideo(data);
+  });
 });

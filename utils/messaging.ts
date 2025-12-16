@@ -33,6 +33,7 @@ interface MessagingProtocol {
       title: string;
     } | null,
   ) => void;
+  'video:delete': (data: { suggestionId: string }) => void;
 }
 
 export const messaging = defineExtensionMessaging<MessagingProtocol>();
