@@ -2,7 +2,7 @@
   "name": "ShareYT",
   "description": "A free, cross-platform browser extension that allows you to easily share and react to YouTube videos with your friends.",
   "private": true,
-  "version": "0.0.3",
+  "version": "0.0.4",
   "type": "module",
   "scripts": {
     "dev": "wxt",
