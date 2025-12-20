@@ -176,7 +176,7 @@ export default defineContentScript({
       // Footer
       const footer = document.createElement('div');
       footer.style.display = 'flex';
-      footer.style.justifyContent = 'flex-end';
+      footer.style.justifyContent = 'center';
       footer.style.marginTop = '8px';
 
       const confirmBtn = document.createElement('button');
@@ -189,7 +189,42 @@ export default defineContentScript({
       confirmBtn.style.cursor = 'pointer';
       confirmBtn.disabled = true;
       confirmBtn.style.opacity = '0.5';
+      confirmBtn.sytle.marginLeft = 'auto';
 
+      type Timestamp = { str: string, secs: number };
+      const getTimestamp = () : Timestamp | null => {
+        const currentTimeEl: string = 
+            document.querySelector('.typ-time-current');
+        const current: string? = currentTimeEl.textContent?.trim() || null;
+
+        const parts = string[] = current.split(":");
+        if (parts.length !== 2) return null;
+
+        const minutes: number = Number(parts[0]);
+        const seconds: number = Number(parts[1]);
+
+        if (Number.isNaN(minutes) || Number.isNaN(seconds)) return null;
+
+        return { str: current, secs: (minutes * 60 * seconds) };
+      }
+
+      const saveTimestampWrapper = document.createElement('div');
+      saveTimestampWrapper.style.display = 'flex';
+      saveTimestampWrapper.style.alignItems = 'center';
+
+      const saveTimestampCheckbox = document.createElement('input');
+      saveTimestampCheckbox.type = 'checkbox';
+      saveTimestampCheckbox.id = 'save-time-stamp-checkbox';
+
+      const saveTimestampLabel = document.createElement('label');
+      saveTimestampLabel.textContent = `Start at ${getTimestamp().str}`;
+      saveTimestampLabel.style.marginLeft = '4px';
+      saveTimestampLabel.style.color = '#000';
+
+      saveTimestampWrapper.appendChild(saveTimestampCheckbox);
+      saveTimestampWrapper.appendChild(saveTimestampLabel);
+
+      footer.appendChild(saveTimestampWrapper);
       footer.appendChild(confirmBtn);
 
       const updateConfirmBtnState = () => {
