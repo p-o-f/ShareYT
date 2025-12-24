@@ -213,9 +213,9 @@ export default defineUnlistedScript(async () => {
     <img src="${data.thumbnailUrl}" alt="Video Thumbnail" style="width: 100%; height: auto; display: block;" />
   </div>
   <div class="video-info" style="margin-top: 8px;">
-    <strong>${data.title || 'Untitled Video'}</strong><br />
+    <strong class="video-title">${data.title || 'Untitled Video'}</strong><br />
     <small>${label} at ${formattedDate}</small><br />
-    <input type="checkbox" ${data.watched ? 'checked' : ''}/> Mark as Watched
+    <input class="time-checkbox" type="checkbox" ${data.watched ? 'checked' : ''}/> Mark as Watched
     <span class="watch-btn" style="float: right; color: #3b4cca; cursor: pointer;">Watch</span>
   </div>
 </div>
@@ -225,11 +225,28 @@ export default defineUnlistedScript(async () => {
       temp.innerHTML = html.trim();
       const card = temp.firstChild;
 
-      card.querySelector('.watch-btn').addEventListener('click', () => {
+      const openVideo = () => {
         window.open(
           `https://www.youtube.com/watch?v=${data.videoId}`,
           '_blank',
         );
+
+        //TODO Handle "mark as watched" logic here?
+      }
+
+      // click to video
+      const thumbnail = card.querySelector('.video-thumbnail');
+      if (thumbnail) thumbnail.addEventListener('click', openVideo);
+
+      // other 
+      card.querySelector('.watch-btn').addEventListener('click', () => {
+        e.stopPropogation();
+        openVideo();
+      });
+
+      card.querySelector('.time-checkbox').addEventListener('click', () => {
+        e.stopPropogation();
+        //TODO implement
       });
 
       return card;
