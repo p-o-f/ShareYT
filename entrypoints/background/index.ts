@@ -377,6 +377,7 @@ export default defineBackground(() => {
     if (data && data.to && Array.isArray(data.to)) {
       suggestVideo({
         videoId: data.videoId,
+        time: data.time,
         toUids: data.to, // Pass array of UIDs
         thumbnailUrl: data.thumbnailUrl,
         title: data.title,

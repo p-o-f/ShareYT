@@ -514,7 +514,9 @@ export default defineUnlistedScript(async () => {
 
         try {
           // Fetch all needed profiles in ONE batch call
-          const response = await batchGetUserProfilesFn({ uids: uidsToFetch });
+          const response = await batchGetUserProfilesFn({
+            uids: uidsToFetch,
+          });
           const { users, notFound } = response.data || {};
 
           if (notFound && notFound.length > 0) {

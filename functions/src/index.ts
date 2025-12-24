@@ -279,13 +279,15 @@ export const suggestVideo = functions.https.onCall(async (data, context) => {
     );
   }
 
-  const { videoId, toUids, thumbnailUrl, title } = data; // `toUids` is an array of recipient UIDs
+  const { videoId, time, toUids, thumbnailUrl, title } = data; // `toUids` is an array of recipient UIDs
+  console.log(data)
   const fromUid = context.auth.uid;
 
   // Check required fields
   if (
     !videoId ||
     !toUids ||
+    (time && Number.isNaN(time)) ||
     !Array.isArray(toUids) ||
     toUids.length === 0 ||
     !thumbnailUrl ||
@@ -321,6 +323,7 @@ export const suggestVideo = functions.https.onCall(async (data, context) => {
 
     batch.set(newSuggestionRef, {
       videoId,
+      time,
       from: fromUid,
       to: toUid,
       thumbnailUrl,
@@ -364,7 +367,10 @@ export const deleteVideo = functions.https.onCall(async (data, context) => {
       return { success: true, message: 'Suggestion already deleted.' };
     }
 
-    const { from, to } = suggestionDoc.data() as { from: string; to: string };
+    const { from, to } = suggestionDoc.data() as {
+      from: string;
+      to: string;
+    };
 
     // 2. Authorization check: only sender or receiver can delete.
     if (uidMe !== from && uidMe !== to) {

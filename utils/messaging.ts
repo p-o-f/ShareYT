@@ -28,6 +28,7 @@ interface MessagingProtocol {
   'recommend:video': (
     recc: {
       videoId: string | null;
+      time: number | null;
       to: string[];
       thumbnailUrl: string;
       title: string;

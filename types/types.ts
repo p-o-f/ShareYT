@@ -6,6 +6,7 @@ export type SerializedUser = Pick<
 >;
 export type VideoRecommendation = {
   videoId: string | null;
+  time; number | null;
   to: string | null;
   thumbnailUrl: string | null;
   title: string | null;

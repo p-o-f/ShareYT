@@ -189,15 +189,17 @@ export default defineContentScript({
       confirmBtn.style.cursor = 'pointer';
       confirmBtn.disabled = true;
       confirmBtn.style.opacity = '0.5';
-      confirmBtn.sytle.marginLeft = 'auto';
+      confirmBtn.style.marginLeft = 'auto';
 
-      type Timestamp = { str: string, secs: number };
-      const getTimestamp = () : Timestamp | null => {
-        const currentTimeEl: string = 
-            document.querySelector('.typ-time-current');
-        const current: string? = currentTimeEl.textContent?.trim() || null;
+      type Timestamp = { str: string | null; secs: number | null};
+      const getTimestamp = (): Timestamp | null => {
+        const currentTimeEl: string | null
+          = document.querySelector('.ytp-time-current');
+        const current: string | null = currentTimeEl?.textContent?.trim() || null;
 
-        const parts = string[] = current.split(":");
+        if (current == null) return {str: null, secs: null};
+
+        const parts: string[] = current.split(':');
         if (parts.length !== 2) return null;
 
         const minutes: number = Number(parts[0]);
@@ -205,8 +207,8 @@ export default defineContentScript({
 
         if (Number.isNaN(minutes) || Number.isNaN(seconds)) return null;
 
-        return { str: current, secs: (minutes * 60 * seconds) };
-      }
+        return { str: current, secs: minutes * 60 * seconds };
+      };
 
       const saveTimestampWrapper = document.createElement('div');
       saveTimestampWrapper.style.display = 'flex';
@@ -258,6 +260,7 @@ export default defineContentScript({
 
         messaging.sendMessage('recommend:video', {
           videoId,
+          time: getTimestamp()?.secs || null,
           to: selectedUids, // Sending array of UIDs
           thumbnailUrl,
           title,
@@ -625,7 +628,10 @@ export default defineContentScript({
     storage.watch<SerializedUser>(
       'local:user',
       async (currentUser, previousUser) => {
-        console.log('User loginStatus changed:', { currentUser, previousUser });
+        console.log('User loginStatus changed:', {
+          currentUser,
+          previousUser,
+        });
 
         if (!currentUser && previousUser) {
           // User was previously logged in, now they are logged out
