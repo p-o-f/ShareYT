@@ -237,7 +237,10 @@ export default defineUnlistedScript(async () => {
 
       // click to video
       const thumbnail = card.querySelector('.video-thumbnail');
+      const title = card.querySelector('.video-title');
       if (thumbnail) thumbnail.addEventListener('click', 
+        openVideo, data.videoId);
+      if (title) title.addEventListener('click',
         openVideo, data.videoId);
 
       // other 
@@ -310,7 +313,10 @@ export default defineUnlistedScript(async () => {
 
       // click to video
       const thumbnail = card.querySelector('.video-thumbnail');
+      const title = card.querySelector('.video-title');
       if (thumbnail) thumbnail.addEventListener('click', 
+        openVideo, groupData.videoId);
+      if (title) title.addEventListener('click',
         openVideo, groupData.videoId);
 
       // Toggle Dropdown
