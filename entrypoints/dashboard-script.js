@@ -179,16 +179,13 @@ export default defineUnlistedScript(async () => {
     // ---------------------------
     // VIDEO WATCHERS
     // ---------------------------
-    
+
     // helper functions
     const openVideo = (videoId) => {
-        window.open(
-          `https://www.youtube.com/watch?v=${videoId}`,
-          '_blank',
-        );
+      window.open(`https://www.youtube.com/watch?v=${videoId}`, '_blank');
 
-        //TODO Handle "mark as watched" logic here?
-    }
+      //TODO Handle "mark as watched" logic here?
+    };
     function renderVideoCard(data, role) {
       console.log('Rendering video card for:', data);
 
@@ -238,12 +235,11 @@ export default defineUnlistedScript(async () => {
       // click to video
       const thumbnail = card.querySelector('.video-thumbnail');
       const title = card.querySelector('.video-title');
-      if (thumbnail) thumbnail.addEventListener('click', 
-        openVideo, data.videoId);
-      if (title) title.addEventListener('click',
-        openVideo, data.videoId);
+      if (thumbnail)
+        thumbnail.addEventListener('click', openVideo, data.videoId);
+      if (title) title.addEventListener('click', openVideo, data.videoId);
 
-      // other 
+      // other
       card.querySelector('.watch-btn').addEventListener('click', () => {
         openVideo(data.videoId);
       });
@@ -314,10 +310,9 @@ export default defineUnlistedScript(async () => {
       // click to video
       const thumbnail = card.querySelector('.video-thumbnail');
       const title = card.querySelector('.video-title');
-      if (thumbnail) thumbnail.addEventListener('click', 
-        openVideo, groupData.videoId);
-      if (title) title.addEventListener('click',
-        openVideo, groupData.videoId);
+      if (thumbnail)
+        thumbnail.addEventListener('click', openVideo, groupData.videoId);
+      if (title) title.addEventListener('click', openVideo, groupData.videoId);
 
       // Toggle Dropdown
       const trigger = card.querySelector('.recipients-trigger');
