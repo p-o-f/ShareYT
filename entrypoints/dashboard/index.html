@@ -134,6 +134,23 @@
         justify-content: center;
         color: #777;
         font-size: 1.2rem;
+
+        cursor: pointer;
+        transition:
+          transform .15s ease,
+          box-shadow .15s ease,
+          filter .15s ease;
+      }
+
+      .video-thumbnail:hover {
+        transform: scale(1.02);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+        filter: brightness(1.05);
+      }
+
+      .video-thumbnail:active {
+        transform: scale(0.98);
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.25);
       }
 
       .video-info {
@@ -141,8 +158,18 @@
         font-size: 0.9rem;
       }
 
-      .video-info small {
+      .video-title {
         color: #666;
+
+        cursor: pointer;
+        transition:
+          color .15s ease,
+          text-decoration-color .15s ease,
+      }
+
+      .video-title:hover {
+        color: #3b4cca;
+        text-decoration-thickness: 2px;
       }
 
       footer {
