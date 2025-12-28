@@ -113,9 +113,25 @@ async function startListeners(userId: string) {
               friend?.email ||
               'Someone';
 
+            const reaction = data.reaction;
+            let body = `Click to open: "${videoTitle}"`;
+
+            if (reaction) {
+              const MAX_LEN = 70;
+              let visibleReaction = reaction;
+              if (reaction.length > MAX_LEN) {
+                visibleReaction = reaction.substring(0, MAX_LEN - 3) + '...';
+              }
+              body = `${senderName}: ${visibleReaction}`;
+            } else {
+              body = `${senderName} just sent you a video!`;
+            }
+
             const notifId = await createBrowserNotification(
-              `${senderName} just sent you a video!`, // <- 70 char limit for this one
-              `Click to open: "${videoTitle}"`,
+              reaction
+                ? `${senderName} shared with a note:`
+                : `New Shared Video`,
+              body,
               true,
             );
 
@@ -380,6 +396,7 @@ export default defineBackground(() => {
         toUids: data.to, // Pass array of UIDs
         thumbnailUrl: data.thumbnailUrl,
         title: data.title,
+        reaction: data.reaction,
       });
     }
   });
@@ -387,5 +404,15 @@ export default defineBackground(() => {
   messaging.onMessage('notification:create', ({ data }) => {
     const { title, message, isClickable } = data;
     createBrowserNotification(title, message, isClickable);
+  });
+
+  messaging.onMessage('video:delete', ({ data }) => {
+    const deleteVideo = httpsCallable(functions, 'deleteVideo');
+    deleteVideo(data);
+  });
+
+  messaging.onMessage('video:updateReaction', ({ data }) => {
+    const updateReaction = httpsCallable(functions, 'updateReaction');
+    updateReaction(data);
   });
 });
