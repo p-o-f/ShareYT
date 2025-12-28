@@ -128,7 +128,9 @@ async function startListeners(userId: string) {
             }
 
             const notifId = await createBrowserNotification(
-              reaction ? `${senderName} shared with a note:` : `New Shared Video`,
+              reaction
+                ? `${senderName} shared with a note:`
+                : `New Shared Video`,
               body,
               true,
             );

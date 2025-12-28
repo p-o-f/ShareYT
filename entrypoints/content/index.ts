@@ -250,7 +250,8 @@ export default defineContentScript({
         confirmBtn.disabled = !enable;
         confirmBtn.style.opacity = enable ? '1' : '0.5';
 
-        if (anySelected && anyPendingDelete) confirmBtn.textContent = 'Apply Changes';
+        if (anySelected && anyPendingDelete)
+          confirmBtn.textContent = 'Apply Changes';
         else if (anyPendingDelete) confirmBtn.textContent = 'Unsend Videos';
         else confirmBtn.textContent = 'Share';
       };
@@ -263,8 +264,8 @@ export default defineContentScript({
 
         // 1. Process Deletions
         if (pendingDeleteIds.size > 0) {
-          console.log("Processing deletions:", pendingDeleteIds);
-          pendingDeleteIds.forEach(friendUid => {
+          console.log('Processing deletions:', pendingDeleteIds);
+          pendingDeleteIds.forEach((friendUid) => {
             const docId = sentMap.get(friendUid);
             if (docId) {
               messaging.sendMessage('video:delete', { suggestionId: docId });
@@ -382,7 +383,9 @@ export default defineContentScript({
 
       const updateSelectAllState = (visibleFiltered: typeof items) => {
         // "Select All" only applies to items that are NOT disabled (already shared)
-        const selectableItems = visibleFiltered.filter(i => !sentMap.has(i.id));
+        const selectableItems = visibleFiltered.filter(
+          (i) => !sentMap.has(i.id),
+        );
 
         if (selectableItems.length === 0) {
           selectAllCheckbox.checked = false;
@@ -394,8 +397,10 @@ export default defineContentScript({
         selectAllCheckbox.disabled = false;
         selectAllWrapper.style.opacity = '1';
 
-        const allSelected = selectableItems.every(i => selectedIds.has(i.id));
-        const noneSelected = selectableItems.every(i => !selectedIds.has(i.id));
+        const allSelected = selectableItems.every((i) => selectedIds.has(i.id));
+        const noneSelected = selectableItems.every(
+          (i) => !selectedIds.has(i.id),
+        );
 
         if (allSelected) {
           selectAllCheckbox.checked = true;
@@ -489,7 +494,9 @@ export default defineContentScript({
               const deleteBtn = document.createElement('button');
               // If pending delete, show "Undo" (or back arrow), else show "X"
               deleteBtn.textContent = isPendingDelete ? '↩' : 'X';
-              deleteBtn.title = isPendingDelete ? 'Undo remove' : 'Unsend video';
+              deleteBtn.title = isPendingDelete
+                ? 'Undo remove'
+                : 'Unsend video';
               deleteBtn.style.border = 'none';
               deleteBtn.style.background = 'transparent';
               deleteBtn.style.color = isPendingDelete ? '#4caf50' : '#f44336'; // Green for undo, Red for X
@@ -527,12 +534,14 @@ export default defineContentScript({
         );
 
         // Exclude already shared
-        const selectableItems = visibleItems.filter(i => !sentMap.has(i.id) && !i.disabled);
+        const selectableItems = visibleItems.filter(
+          (i) => !sentMap.has(i.id) && !i.disabled,
+        );
 
         if (selectAllCheckbox.checked) {
-          selectableItems.forEach(item => selectedIds.add(item.id));
+          selectableItems.forEach((item) => selectedIds.add(item.id));
         } else {
-          selectableItems.forEach(item => selectedIds.delete(item.id));
+          selectableItems.forEach((item) => selectedIds.delete(item.id));
         }
         renderItems(filter);
       };
@@ -568,7 +577,7 @@ export default defineContentScript({
         const sentVideos = rawSentVideos as any[] | null;
         sentMap.clear();
         if (sentVideos && Array.isArray(sentVideos) && currentVideoId) {
-          sentVideos.forEach(v => {
+          sentVideos.forEach((v) => {
             // If matches current video, add to map
             if (v.videoId === currentVideoId) {
               // Schema Decision: Single Recipient vs Array
@@ -597,7 +606,10 @@ export default defineContentScript({
 
       // Watch Sent Videos
       storage.getItem('local:sentVideos').then(handleSentVideosUpdate);
-      const unwatchSent = storage.watch('local:sentVideos', handleSentVideosUpdate);
+      const unwatchSent = storage.watch(
+        'local:sentVideos',
+        handleSentVideosUpdate,
+      );
 
       // Cleanup Strategy: Chained Unwatchers
       // We have two independent listeners: 'friendsList' and 'sentVideos'.

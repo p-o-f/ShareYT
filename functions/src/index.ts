@@ -417,7 +417,7 @@ export const updateReaction = functions.https.onCall(async (data, context) => {
   if (reaction && reaction.length > 100) {
     throw new functions.https.HttpsError(
       'invalid-argument',
-      'Reaction exceeds 100 characters.'
+      'Reaction exceeds 100 characters.',
     );
   }
 

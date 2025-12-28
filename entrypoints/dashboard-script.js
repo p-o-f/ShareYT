@@ -14,7 +14,6 @@ const deleteVideoFn = httpsCallable(functions, 'deleteVideo');
 // window.getUserProfileFn = getUserProfileFn;
 const updateReactionFn = httpsCallable(functions, 'updateReaction');
 
-
 export default defineUnlistedScript(async () => {
   console.log(
     'Dashboard script running in this manifest version',
@@ -124,10 +123,11 @@ export default defineUnlistedScript(async () => {
       const html = `
         <div class="friend-tile" style="display: flex; align-items: center; justify-content: space-between; padding: 8px 0;">
           <div style="display: flex; align-items: center;">
-            <img src="${friendData.img ||
-        friendData.photoURL ||
-        'https://www.gravatar.com/avatar?d=mp'
-        }" alt="Profile Picture" style="width: 32px; height: 32px; border-radius: 50%; margin-right: 12px;" />
+            <img src="${
+              friendData.img ||
+              friendData.photoURL ||
+              'https://www.gravatar.com/avatar?d=mp'
+            }" alt="Profile Picture" style="width: 32px; height: 32px; border-radius: 50%; margin-right: 12px;" />
             <span>${friendData.label || friendData.displayName || friendData.email}</span>
           </div>
           <button class="remove-friend-btn" style="background-color: #f44336; color: white; border: none; border-radius: 4px; width: 24px; height: 24px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; padding: 0; font-size: 14px;">X</button>
@@ -199,13 +199,13 @@ export default defineUnlistedScript(async () => {
 
       const formattedDate = dateObj
         ? dateObj.toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-          hour: 'numeric',
-          minute: 'numeric',
-          hour12: true,
-        })
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: 'numeric',
+            hour12: true,
+          })
         : 'Unknown date';
 
       const html = `
@@ -360,7 +360,9 @@ export default defineUnlistedScript(async () => {
             const editor = itemRow.querySelector('.reaction-editor');
             const textarea = editor.querySelector('textarea');
             const saveReactionBtn = editor.querySelector('.save-reaction-btn');
-            const closeReactionBtn = editor.querySelector('.close-reaction-btn');
+            const closeReactionBtn = editor.querySelector(
+              '.close-reaction-btn',
+            );
 
             // Open Editor
             reactionTrigger.addEventListener('click', (ev) => {
@@ -395,7 +397,10 @@ export default defineUnlistedScript(async () => {
               saveReactionBtn.innerHTML = '...';
 
               try {
-                await updateReactionFn({ suggestionId: r.docId, reaction: newReaction });
+                await updateReactionFn({
+                  suggestionId: r.docId,
+                  reaction: newReaction,
+                });
                 // Optimistic update
                 r.reaction = newReaction;
                 saveReactionBtn.disabled = true;
