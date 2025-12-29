@@ -8,6 +8,12 @@ https://github.com/aklinker1/publish-browser-extension
 
 to configure:
 npx publish-extension init
+
+npx publish-extension `
+  --firefox-zip .output/shareyt-0.0.4-firefox.zip `
+  --firefox-sources-zip .output/shareyt-0.0.4-sources.zip `
+  --edge-zip .output/shareyt-0.0.4-chrome.zip
+
 ```
 
 # MV3 compliance branch
