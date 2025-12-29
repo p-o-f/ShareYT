@@ -180,6 +180,13 @@ export default defineUnlistedScript(async () => {
     // ---------------------------
     // VIDEO WATCHERS
     // ---------------------------
+
+    // helper functions
+    const openVideo = (videoId) => {
+      window.open(`https://www.youtube.com/watch?v=${videoId}`, '_blank');
+
+      //TODO Handle "mark as watched" logic here?
+    };
     function renderVideoCard(data, role) {
       console.log('Rendering video card for:', data);
 
@@ -214,7 +221,7 @@ export default defineUnlistedScript(async () => {
     <img src="${data.thumbnailUrl}" alt="Video Thumbnail" style="width: 100%; height: auto; display: block;" />
   </div>
   <div class="video-info" style="margin-top: 8px;">
-    <strong>${data.title || 'Untitled Video'}</strong><br />
+    <strong class="video-title">${data.title || 'Untitled Video'}</strong><br />
     <small>${label} at ${formattedDate}</small><br />
     ${data.reaction ? `<p style="font-style: italic; color: #555; background: #f1f1f1; padding: 4px 8px; border-radius: 4px; border-left: 3px solid #3b4cca; margin: 6px 0;">"${data.reaction}"</p>` : ''}
     <input type="checkbox" ${data.watched ? 'checked' : ''}/> Mark as Watched
@@ -227,11 +234,20 @@ export default defineUnlistedScript(async () => {
       temp.innerHTML = html.trim();
       const card = temp.firstChild;
 
+      // click to video
+      const thumbnail = card.querySelector('.video-thumbnail');
+      const title = card.querySelector('.video-title');
+      if (thumbnail)
+        thumbnail.addEventListener('click', openVideo, data.videoId);
+      if (title) title.addEventListener('click', openVideo, data.videoId);
+
+      // other
       card.querySelector('.watch-btn').addEventListener('click', () => {
-        window.open(
-          `https://www.youtube.com/watch?v=${data.videoId}`,
-          '_blank',
-        );
+        openVideo(data.videoId);
+      });
+
+      card.querySelector('.time-checkbox').addEventListener('click', () => {
+        //TODO implement
       });
 
       return card;
@@ -269,7 +285,7 @@ export default defineUnlistedScript(async () => {
     <img src="${groupData.thumbnailUrl}" alt="Video Thumbnail" style="width: 100%; height: auto; display: block;" />
   </div>
   <div class="video-info" style="margin-top: 8px;">
-    <strong>${groupData.title || 'Untitled Video'}</strong><br />
+    <strong class="video-title">${groupData.title || 'Untitled Video'}</strong><br />
     
     <!-- Clickable Recipient Label -->
     <div class="recipients-trigger" style="cursor: pointer; color: #3b4cca; margin-bottom: 4px;">
@@ -293,13 +309,12 @@ export default defineUnlistedScript(async () => {
       temp.innerHTML = html.trim();
       const card = temp.firstChild;
 
-      // Watch Button
-      card.querySelector('.watch-btn').addEventListener('click', () => {
-        window.open(
-          `https://www.youtube.com/watch?v=${groupData.videoId}`,
-          '_blank',
-        );
-      });
+      // click to video
+      const thumbnail = card.querySelector('.video-thumbnail');
+      const title = card.querySelector('.video-title');
+      if (thumbnail)
+        thumbnail.addEventListener('click', openVideo, groupData.videoId);
+      if (title) title.addEventListener('click', openVideo, groupData.videoId);
 
       // Toggle Dropdown
       const trigger = card.querySelector('.recipients-trigger');
