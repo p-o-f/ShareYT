@@ -12,6 +12,7 @@ const deleteVideoFn = httpsCallable(functions, 'deleteVideo');
 
 // // For manual testing in console, temporary
 // window.getUserProfileFn = getUserProfileFn;
+const updateReactionFn = httpsCallable(functions, 'updateReaction');
 
 export default defineUnlistedScript(async () => {
   console.log(
@@ -222,7 +223,8 @@ export default defineUnlistedScript(async () => {
   <div class="video-info" style="margin-top: 8px;">
     <strong class="video-title">${data.title || 'Untitled Video'}</strong><br />
     <small>${label} at ${formattedDate}</small><br />
-    <input class="time-checkbox" type="checkbox" ${data.watched ? 'checked' : ''}/> Mark as Watched
+    ${data.reaction ? `<p style="font-style: italic; color: #555; background: #f1f1f1; padding: 4px 8px; border-radius: 4px; border-left: 3px solid #3b4cca; margin: 6px 0;">"${data.reaction}"</p>` : ''}
+    <input type="checkbox" ${data.watched ? 'checked' : ''}/> Mark as Watched
     <span class="watch-btn" style="float: right; color: #3b4cca; cursor: pointer;">Watch</span>
   </div>
 </div>
@@ -340,11 +342,98 @@ export default defineUnlistedScript(async () => {
 
             // Checkbox is checked by default (representing "Currently Sent")
             // Unchecking means "Delete/Unsend"
+            // Unchecking means "Delete/Unsend"
+            // Add Reaction Icon and Text
+            const reactionText = r.reaction || '';
+            const hasReaction = !!reactionText;
+
             itemRow.innerHTML = `
-               <span>${rName} <small style="color:#666">(${rDate})</small></span>
+               <div style="flex: 1; display: flex; align-items: center;">
+                 <span>${rName} <small style="color:#666">(${rDate})</small></span>
+                 
+                 <!-- Editable Reaction Icon -->
+                 <span class="reaction-trigger" title="${'See or edit your reaction'}" 
+                       style="cursor: pointer; margin-left: 8px; font-size: 16px;">
+                       💬 ${hasReaction ? '' : '<small style="font-size: 0.7em; color: #aaa;">+</small>'}
+                 </span>
+                 
+                 <!-- Hidden Inline Editor -->
+                 <div class="reaction-editor" style="display: none; position: absolute; background: white; border: 1px solid #ccc; padding: 5px; z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.2); border-radius: 4px; width: 220px;">
+                    <textarea maxlength="100" placeholder="Add a reaction..." style="width: 100%; height: 50px; resize: none; margin-bottom: 5px; font-family: inherit; font-size: 12px;">${reactionText}</textarea>
+                    <div style="display: flex; justify-content: flex-end; gap: 5px;">
+                        <button class="close-reaction-btn" style="background: transparent; border: 1px solid #ccc; font-size: 10px; cursor: pointer; padding: 2px 6px; border-radius: 3px;">Close</button>
+                        <button class="save-reaction-btn" disabled style="background: #4caf50; color: white; border: none; font-size: 10px; cursor: pointer; padding: 2px 6px; border-radius: 3px; opacity: 0.6;">Save</button>
+                    </div>
+                 </div>
+               </div>
                <input type="checkbox" class="recipient-checkbox" checked data-doc-id="${r.docId}" />
              `;
             listContainer.appendChild(itemRow);
+
+            // Attach Event Listeners for this row's reaction editor
+            const reactionTrigger = itemRow.querySelector('.reaction-trigger');
+            const editor = itemRow.querySelector('.reaction-editor');
+            const textarea = editor.querySelector('textarea');
+            const saveReactionBtn = editor.querySelector('.save-reaction-btn');
+            const closeReactionBtn = editor.querySelector(
+              '.close-reaction-btn',
+            );
+
+            // Open Editor
+            reactionTrigger.addEventListener('click', (ev) => {
+              ev.stopPropagation();
+              // Close other open editors if we wanted single-open policy (optional), but let's just toggle this one.
+              const isVisible = editor.style.display === 'block';
+              editor.style.display = isVisible ? 'none' : 'block';
+              if (!isVisible) textarea.focus();
+            });
+
+            // Click inside editor shouldn't close it
+            editor.addEventListener('click', (ev) => ev.stopPropagation());
+
+            // Textarea input -> Enable Save
+            textarea.addEventListener('input', () => {
+              const isChanged = textarea.value.trim() !== (r.reaction || '');
+              saveReactionBtn.disabled = !isChanged;
+              saveReactionBtn.style.opacity = isChanged ? '1' : '0.6';
+            });
+
+            // Close
+            closeReactionBtn.addEventListener('click', (ev) => {
+              ev.stopPropagation();
+              editor.style.display = 'none';
+              textarea.value = r.reaction || ''; // Reset
+            });
+
+            // Save
+            saveReactionBtn.addEventListener('click', async (ev) => {
+              ev.stopPropagation();
+              const newReaction = textarea.value.trim();
+              saveReactionBtn.innerHTML = '...';
+
+              try {
+                await updateReactionFn({
+                  suggestionId: r.docId,
+                  reaction: newReaction,
+                });
+                // Optimistic update
+                r.reaction = newReaction;
+                saveReactionBtn.disabled = true;
+                saveReactionBtn.style.opacity = '0.6';
+                saveReactionBtn.innerHTML = 'Save';
+                editor.style.display = 'none';
+                // Update the simple indicator if needed?
+                reactionTrigger.innerHTML = `💬 ${newReaction ? '' : '<small style="font-size: 0.7em; color: #aaa;">+</small>'}`;
+              } catch (err) {
+                console.error('Failed to update reaction', err);
+                alert('Failed to save reaction');
+                saveReactionBtn.innerHTML = 'Save';
+              }
+            });
+
+            // Close on click outside (this needs a global listener or just reliance on the parent dropdown closer?)
+            // The parent dropdown logic might interfere. simpler to rely on "Close" button for now or add a document listener.
+            // Let's rely on Close button for robustness in this complexity.
           });
         }
 
@@ -432,7 +521,9 @@ export default defineUnlistedScript(async () => {
           groups[v.videoId].recipients.push({
             to: v.to,
             timestamp: v.timestamp ? v.timestamp.seconds : Date.now() / 1000,
+            timestamp: v.timestamp ? v.timestamp.seconds : Date.now() / 1000,
             docId: v.id, // We need the document ID to delete it
+            reaction: v.reaction, // Include reaction data
           });
         });
 

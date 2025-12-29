@@ -31,8 +31,14 @@ interface MessagingProtocol {
       to: string[];
       thumbnailUrl: string;
       title: string;
+      reaction?: string;
     } | null,
   ) => void;
+  'video:delete': (data: { suggestionId: string }) => void;
+  'video:updateReaction': (data: {
+    suggestionId: string;
+    reaction: string;
+  }) => void;
 }
 
 export const messaging = defineExtensionMessaging<MessagingProtocol>();

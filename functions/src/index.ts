@@ -327,6 +327,7 @@ export const suggestVideo = functions.https.onCall(async (data, context) => {
       title,
       watched: false,
       timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      reaction: data.reaction || null, // Optional reaction field (string)
     });
   }
 
@@ -388,6 +389,62 @@ export const deleteVideo = functions.https.onCall(async (data, context) => {
       'internal',
       'An unexpected error occurred while deleting the video suggestion.',
     );
+  }
+});
+
+export const updateReaction = functions.https.onCall(async (data, context) => {
+  const uidMe = context.auth?.uid;
+  const { suggestionId, reaction } = data;
+
+  if (!uidMe) {
+    throw new functions.https.HttpsError('unauthenticated', 'Login required.');
+  }
+
+  if (!suggestionId || typeof suggestionId !== 'string') {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      'Missing or invalid suggestionId.',
+    );
+  }
+
+  if (reaction && typeof reaction !== 'string') {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      'Reaction must be a string.',
+    );
+  }
+
+  if (reaction && reaction.length > 100) {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      'Reaction exceeds 100 characters.',
+    );
+  }
+
+  const suggestionRef = db.collection('suggestedVideos').doc(suggestionId);
+
+  try {
+    const suggestionDoc = await suggestionRef.get();
+
+    if (!suggestionDoc.exists) {
+      throw new functions.https.HttpsError('not-found', 'Suggestion not found');
+    }
+
+    const docData = suggestionDoc.data();
+    if (docData?.from !== uidMe) {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'Only the sender can edit the reaction.',
+      );
+    }
+
+    await suggestionRef.update({ reaction: reaction || null });
+
+    return { success: true };
+  } catch (error) {
+    if (error instanceof functions.https.HttpsError) throw error;
+    console.error('Error updating reaction:', error);
+    throw new functions.https.HttpsError('internal', 'Update failed');
   }
 });
 
