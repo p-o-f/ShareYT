@@ -123,11 +123,10 @@ export default defineUnlistedScript(async () => {
       const html = `
         <div class="friend-tile" style="display: flex; align-items: center; justify-content: space-between; padding: 8px 0;">
           <div style="display: flex; align-items: center;">
-            <img src="${
-              friendData.img ||
-              friendData.photoURL ||
-              'https://www.gravatar.com/avatar?d=mp'
-            }" alt="Profile Picture" style="width: 32px; height: 32px; border-radius: 50%; margin-right: 12px;" />
+            <img src="${friendData.img ||
+        friendData.photoURL ||
+        'https://www.gravatar.com/avatar?d=mp'
+        }" alt="Profile Picture" style="width: 32px; height: 32px; border-radius: 50%; margin-right: 12px;" />
             <span>${friendData.label || friendData.displayName || friendData.email}</span>
           </div>
           <button class="remove-friend-btn" style="background-color: #f44336; color: white; border: none; border-radius: 4px; width: 24px; height: 24px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; padding: 0; font-size: 14px;">X</button>
@@ -206,13 +205,13 @@ export default defineUnlistedScript(async () => {
 
       const formattedDate = dateObj
         ? dateObj.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: 'numeric',
-            minute: 'numeric',
-            hour12: true,
-          })
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: 'numeric',
+          hour12: true,
+        })
         : 'Unknown date';
 
       const html = `
@@ -665,6 +664,9 @@ export default defineUnlistedScript(async () => {
       const targetEmail = emailInput.value.trim().toLowerCase();
       if (!targetEmail) return alert('Please enter an email address.');
 
+      // Disable the button to prevent double-clicks
+      if (sendBtn) sendBtn.disabled = true;
+
       try {
         // 1. Find the user by email via Cloud Function
         const searchResult = await httpsCallable(
@@ -694,15 +696,44 @@ export default defineUnlistedScript(async () => {
           return alert('You have already sent a friend request to this user.');
         }
 
-        await sendFriendRequestFn({ toUid });
+        // OLD CODE REPLACED BY BELOW BLOCK---------------------------------------------------------------------------------
+        //     await sendFriendRequestFn({ toUid });
 
-        let success = `A friend request was sent to ${targetEmail}`;
-        console.log(success);
-        emailInput.value = '';
-        return alert(success);
+        //     let success = `A friend request was sent to ${targetEmail}`;
+        //     console.log(success);
+        //     emailInput.value = '';
+        //     return alert(success);
+        //   } catch (e) {
+        //     console.error('Error sending friend request:', e);
+        //     alert(`Failed to send friend request: ${e.message}`);
+        //   }
+        // }
+        // OLD CODE---------------------------------------------------------------------------------
+
+        // Call Cloud Function to send request
+        try {
+          await sendFriendRequestFn({ toUid });
+
+          // Success
+          alert('A friend request was sent to ' + targetEmail);
+          if (emailInput) emailInput.value = '';
+          console.log('Friend request sent to ' + targetEmail);
+        } catch (e) {
+          // Client-side hardening: handle "already exists" as success
+          if (e.code === 'already-exists') {
+            alert('A friend request is already pending to this user.');
+            if (emailInput) emailInput.value = '';
+          } else {
+            console.error('Error sending friend request:', e);
+            alert('Failed to send friend request. Please try again.');
+          }
+        }
       } catch (e) {
-        console.error('Error sending friend request:', e);
-        alert(`Failed to send friend request: ${e.message}`);
+        console.error('Error looking up user:', e);
+        alert('Failed to send friend request. Please try again.');
+      } finally {
+        // Re-enable the button
+        if (sendBtn) sendBtn.disabled = false;
       }
     }
 
