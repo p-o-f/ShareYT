@@ -32,6 +32,7 @@ interface MessagingProtocol {
       thumbnailUrl: string;
       title: string;
       reaction?: string;
+      timestamp?: string;
     } | null,
   ) => void;
   'video:delete': (data: { suggestionId: string }) => void;
