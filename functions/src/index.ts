@@ -65,28 +65,57 @@ export const sendFriendRequest = functions.https.onCall(
     const toRef = db.collection('friendRequests').doc(toUid);
     const timestamp = admin.firestore.FieldValue.serverTimestamp();
 
+    // OLD CODE REPLACED BY BELOW BLOCK ---------------------------------------------------------------------------------
+    // try {
+    //   await db.runTransaction(async (t) => {
+    //     const toDoc = await t.get(toRef);
+
+    //     // Check if a request already exists in the other direction
+    //     if (toDoc.exists && toDoc.data()?.sent?.[fromUid]) {
+    //       throw new functions.https.HttpsError(
+    //         'already-exists',
+    //         'A friend request from this user is already pending.',
+    //       );
+    //     }
+
+    //     // Atomically update both users' request documents
+    //     t.set(fromRef, { sent: { [toUid]: timestamp } }, { merge: true });
+    //     t.set(toRef, { received: { [fromUid]: timestamp } }, { merge: true });
+    //   });
+
+    //   return { success: true };
+    // } catch (error) {
+    //   console.error('Error sending friend request:', error);
+    //   throw error; // Re-throw original HttpsError or a generic one
+    // }
+    // OLD CODE---------------------------------------------------------------------------------
+
+    // Read first (outside transaction)
+    const toDoc = await toRef.get();
+
+    // Check if a request already exists in the other direction
+    if (toDoc.exists && toDoc.data()?.sent?.[fromUid]) {
+      throw new functions.https.HttpsError(
+        'already-exists',
+        'A friend request from this user is already pending.',
+      );
+    }
+
+    // Atomically update both users' request documents
     try {
       await db.runTransaction(async (t) => {
-        const toDoc = await t.get(toRef);
-
-        // Check if a request already exists in the other direction
-        if (toDoc.exists && toDoc.data()?.sent?.[fromUid]) {
-          throw new functions.https.HttpsError(
-            'already-exists',
-            'A friend request from this user is already pending.',
-          );
-        }
-
-        // Atomically update both users' request documents
         t.set(fromRef, { sent: { [toUid]: timestamp } }, { merge: true });
         t.set(toRef, { received: { [fromUid]: timestamp } }, { merge: true });
       });
-
-      return { success: true };
-    } catch (error) {
-      console.error('Error sending friend request:', error);
-      throw error; // Re-throw original HttpsError or a generic one
+    } catch (err) {
+      console.error('Firestore transaction failed:', err);
+      throw new functions.https.HttpsError(
+        'internal',
+        'Could not send friend request. Please try again.',
+      );
     }
+
+    return { success: true };
   },
 );
 

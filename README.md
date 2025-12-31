@@ -3,13 +3,6 @@
 A free, cross-platform browser extension that allows you to easily share and react to YouTube videos with your friends.
 Published to Chrome Web Store, Mozilla Add-ons, and Microsoft Edge.
 
-```
-https://github.com/aklinker1/publish-browser-extension
-
-to configure:
-npx publish-extension init
-```
-
 # MV3 compliance branch
 
 ## Why This Was Needed
@@ -57,6 +50,19 @@ More info (from my personal research)
 - https://www.reddit.com/r/Firebase/comments/1dzms70/firebase_auth_in_chrome_extension_with_manifest/
 
 # Stuff for Developers
+
+```
+https://github.com/aklinker1/publish-browser-extension
+
+to configure:
+npx publish-extension init
+
+npx publish-extension `
+  --firefox-zip .output/shareyt-0.0.5-firefox.zip `
+  --firefox-sources-zip .output/shareyt-0.0.5-sources.zip `
+  --edge-zip .output/shareyt-0.0.5-chrome.zip
+
+```
 
 To update wxt:
 

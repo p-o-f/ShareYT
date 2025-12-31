@@ -246,9 +246,9 @@ export default defineUnlistedScript(async () => {
         openVideo(data.videoId);
       });
 
-      card.querySelector('.time-checkbox').addEventListener('click', () => {
-        //TODO implement
-      });
+      // card.querySelector('.time-checkbox').addEventListener('click', () => {
+      //   //TODO implement
+      // });
 
       return card;
     }
@@ -665,6 +665,9 @@ export default defineUnlistedScript(async () => {
       const targetEmail = emailInput.value.trim().toLowerCase();
       if (!targetEmail) return alert('Please enter an email address.');
 
+      // Disable the button to prevent double-clicks
+      if (sendBtn) sendBtn.disabled = true;
+
       try {
         // 1. Find the user by email via Cloud Function
         const searchResult = await httpsCallable(
@@ -694,15 +697,44 @@ export default defineUnlistedScript(async () => {
           return alert('You have already sent a friend request to this user.');
         }
 
-        await sendFriendRequestFn({ toUid });
+        // OLD CODE REPLACED BY BELOW BLOCK---------------------------------------------------------------------------------
+        //     await sendFriendRequestFn({ toUid });
 
-        let success = `A friend request was sent to ${targetEmail}`;
-        console.log(success);
-        emailInput.value = '';
-        return alert(success);
+        //     let success = `A friend request was sent to ${targetEmail}`;
+        //     console.log(success);
+        //     emailInput.value = '';
+        //     return alert(success);
+        //   } catch (e) {
+        //     console.error('Error sending friend request:', e);
+        //     alert(`Failed to send friend request: ${e.message}`);
+        //   }
+        // }
+        // OLD CODE---------------------------------------------------------------------------------
+
+        // Call Cloud Function to send request
+        try {
+          await sendFriendRequestFn({ toUid });
+
+          // Success
+          alert('A friend request was sent to ' + targetEmail);
+          if (emailInput) emailInput.value = '';
+          console.log('Friend request sent to ' + targetEmail);
+        } catch (e) {
+          // Client-side hardening: handle "already exists" as success
+          if (e.code === 'already-exists') {
+            alert('A friend request is already pending to this user.');
+            if (emailInput) emailInput.value = '';
+          } else {
+            console.error('Error sending friend request:', e);
+            alert('Failed to send friend request. Please try again.');
+          }
+        }
       } catch (e) {
-        console.error('Error sending friend request:', e);
-        alert(`Failed to send friend request: ${e.message}`);
+        console.error('Error looking up user:', e);
+        alert('Failed to send friend request. Please try again.');
+      } finally {
+        // Re-enable the button
+        if (sendBtn) sendBtn.disabled = false;
       }
     }
 

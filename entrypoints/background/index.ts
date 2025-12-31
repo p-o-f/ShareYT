@@ -36,6 +36,10 @@ let unsubscribeFriendRequests: (() => void) | null = null;
 let unsubscribeSuggestedVideosSender: (() => void) | null = null;
 let unsubscribeSuggestedVideosReceiver: (() => void) | null = null;
 
+// Friend Request Tracking
+const knownFriendRequestUids = new Set<string>();
+let friendRequestsLoaded = false;
+
 function stopListeners() {
   console.log('Cleaning up previous background listeners...');
   if (unsubscribeFriendships) {
@@ -54,6 +58,9 @@ function stopListeners() {
     unsubscribeSuggestedVideosReceiver();
     unsubscribeSuggestedVideosReceiver = null;
   }
+  // Reset tracking state
+  friendRequestsLoaded = false;
+  knownFriendRequestUids.clear();
 }
 
 async function startListeners(userId: string) {
@@ -68,15 +75,81 @@ async function startListeners(userId: string) {
   });
 
   // 2. Listen to Friend Requests
-  unsubscribeFriendRequests = listenToFriendRequests(userId, (snapshot) => {
-    const receivedRequests = snapshot.data()?.received || {};
-    // Store directly to storage
-    storage.setItem('local:friendRequests', receivedRequests);
-    console.log(
-      'Friend requests updated in background:',
-      Object.keys(receivedRequests).length,
-    );
-  });
+  unsubscribeFriendRequests = listenToFriendRequests(
+    userId,
+    async (snapshot) => {
+      const receivedRequests = snapshot.data()?.received || {};
+      const receivedUids = Object.keys(receivedRequests);
+
+      // Initial load check
+      if (!friendRequestsLoaded) {
+        console.log(
+          'Initial friend requests load. Count:',
+          receivedUids.length,
+        );
+        receivedUids.forEach((uid) => knownFriendRequestUids.add(uid));
+        friendRequestsLoaded = true;
+      } else {
+        // Identify new requests
+        const newUids = receivedUids.filter(
+          (uid) => !knownFriendRequestUids.has(uid),
+        );
+
+        // Add to known set immediately to prevent duplicates
+        newUids.forEach((uid) => knownFriendRequestUids.add(uid));
+
+        if (newUids.length > 0) {
+          console.log('New friend requests detected:', newUids);
+          try {
+            const batchGetUserProfiles = httpsCallable(
+              functions,
+              'batchGetUserProfiles',
+            );
+            const response = await batchGetUserProfiles({ uids: newUids });
+            // @ts-ignore
+            const { users } = response.data || {};
+
+            if (users && Array.isArray(users)) {
+              for (const user of users) {
+                const senderName = user.displayName || user.email || 'Someone';
+                await createBrowserNotification(
+                  'New Friend Request',
+                  `${senderName} sent you a friend request!`,
+                  true,
+                );
+              }
+            }
+          } catch (err) {
+            console.error(
+              'Error fetching profiles for new friend requests:',
+              err,
+            );
+            // Fallback notification if profile fetch fails
+            if (newUids.length === 1) {
+              await createBrowserNotification(
+                'New Friend Request',
+                `You have a new friend request!`,
+                true,
+              );
+            } else {
+              await createBrowserNotification(
+                'New Friend Requests',
+                `You have ${newUids.length} new friend requests!`,
+                true,
+              );
+            }
+          }
+        }
+      }
+
+      // Store directly to storage
+      storage.setItem('local:friendRequests', receivedRequests);
+      console.log(
+        'Friend requests updated in background:',
+        Object.keys(receivedRequests).length,
+      );
+    },
+  );
 
   // 3. Listen to Suggested Videos (Receiver)
   let initialReceiverLoad = true;
