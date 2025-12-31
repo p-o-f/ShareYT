@@ -245,9 +245,9 @@ export default defineUnlistedScript(async () => {
         openVideo(data.videoId);
       });
 
-      card.querySelector('.time-checkbox').addEventListener('click', () => {
-        //TODO implement
-      });
+      // card.querySelector('.time-checkbox').addEventListener('click', () => {
+      //   //TODO implement
+      // });
 
       return card;
     }
