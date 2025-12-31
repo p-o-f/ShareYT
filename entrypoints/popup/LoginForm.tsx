@@ -1,19 +1,13 @@
 import { useAuth } from './AuthContext';
 import { messaging } from '../../utils/messaging';
-import { useState } from 'react';
+
 
 export default function LoginForm() {
   const { user, loginWithGoogle, logout, loading } = useAuth();
-  const [summary, setSummary] = useState<string | null>(null);
 
   if (loading) {
     return <div>Loading...</div>;
   }
-
-  const handleSummarize = async () => {
-    const result = await messaging.sendMessage('summarize:video');
-    setSummary(result);
-  };
 
   return (
     <div
@@ -72,18 +66,9 @@ export default function LoginForm() {
           >
             View Your Dashboard
           </button>
-          <button style={{ width: '100%' }} onClick={handleSummarize}>
-            Summarize (in progress)
-          </button>
         </>
-      )}
-
-      {summary && (
-        <div style={{ width: '100%' }}>
-          <h3 style={{ marginBottom: '0.5rem' }}>Summary:</h3>
-          <p style={{ fontSize: '0.9rem' }}>{summary}</p>
-        </div>
       )}
     </div>
   );
 }
+
