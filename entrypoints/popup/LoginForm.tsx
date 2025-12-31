@@ -1,7 +1,6 @@
 import { useAuth } from './AuthContext';
 import { messaging } from '../../utils/messaging';
 
-
 export default function LoginForm() {
   const { user, loginWithGoogle, logout, loading } = useAuth();
 
@@ -71,4 +70,3 @@ export default function LoginForm() {
     </div>
   );
 }
-

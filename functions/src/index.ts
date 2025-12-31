@@ -97,7 +97,7 @@ export const sendFriendRequest = functions.https.onCall(
     if (toDoc.exists && toDoc.data()?.sent?.[fromUid]) {
       throw new functions.https.HttpsError(
         'already-exists',
-        'A friend request from this user is already pending.'
+        'A friend request from this user is already pending.',
       );
     }
 
@@ -111,12 +111,11 @@ export const sendFriendRequest = functions.https.onCall(
       console.error('Firestore transaction failed:', err);
       throw new functions.https.HttpsError(
         'internal',
-        'Could not send friend request. Please try again.'
+        'Could not send friend request. Please try again.',
       );
     }
 
     return { success: true };
-
   },
 );
 
