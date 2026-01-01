@@ -123,11 +123,10 @@ export default defineUnlistedScript(async () => {
       const html = `
         <div class="friend-tile" style="display: flex; align-items: center; justify-content: space-between; padding: 8px 0;">
           <div style="display: flex; align-items: center;">
-            <img src="${
-              friendData.img ||
-              friendData.photoURL ||
-              'https://www.gravatar.com/avatar?d=mp'
-            }" alt="Profile Picture" style="width: 32px; height: 32px; border-radius: 50%; margin-right: 12px;" />
+            <img src="${friendData.img ||
+        friendData.photoURL ||
+        'https://www.gravatar.com/avatar?d=mp'
+        }" alt="Profile Picture" style="width: 32px; height: 32px; border-radius: 50%; margin-right: 12px;" />
             <span>${friendData.label || friendData.displayName || friendData.email}</span>
           </div>
           <button class="remove-friend-btn" style="background-color: #f44336; color: white; border: none; border-radius: 4px; width: 24px; height: 24px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; padding: 0; font-size: 14px;">X</button>
@@ -164,6 +163,8 @@ export default defineUnlistedScript(async () => {
     let friendsState = [];
     let receiverVideosState = [];
     let senderVideosState = [];
+    let receiverSortOrder = 'desc'; // 'desc' | 'asc'
+    let senderSortOrder = 'desc'; // 'desc' | 'asc'
 
     // Helper to get name from UID
     const getName = (uid) => {
@@ -206,13 +207,13 @@ export default defineUnlistedScript(async () => {
 
       const formattedDate = dateObj
         ? dateObj.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: 'numeric',
-            minute: 'numeric',
-            hour12: true,
-          })
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: 'numeric',
+          hour12: true,
+        })
         : 'Unknown date';
 
       const html = `
@@ -501,7 +502,14 @@ export default defineUnlistedScript(async () => {
 
       if (role === 'receiver') {
         // Standard rendering
-        videos.forEach((data) => {
+        // Sort videos
+        const sortedVideos = [...videos].sort((a, b) => {
+          const tA = a.timestamp ? a.timestamp.seconds : 0;
+          const tB = b.timestamp ? b.timestamp.seconds : 0;
+          return receiverSortOrder === 'desc' ? tB - tA : tA - tB;
+        });
+
+        sortedVideos.forEach((data) => {
           videoGrid.appendChild(renderVideoCard(data, role));
         });
       } else {
@@ -521,14 +529,27 @@ export default defineUnlistedScript(async () => {
           groups[v.videoId].recipients.push({
             to: v.to,
             timestamp: v.timestamp ? v.timestamp.seconds : Date.now() / 1000,
-            timestamp: v.timestamp ? v.timestamp.seconds : Date.now() / 1000,
             docId: v.id, // We need the document ID to delete it
             reaction: v.reaction, // Include reaction data
           });
         });
 
-        // Render groups
-        Object.values(groups).forEach((group) => {
+        // Convert to array and sort
+        const groupList = Object.values(groups);
+        groupList.forEach((g) => {
+          // Ensure recipients are sorted by timestamp asc so we know which one is the "first" (displayed)
+          g.recipients.sort((a, b) => a.timestamp - b.timestamp);
+        });
+
+        groupList.sort((a, b) => {
+          // Sort based on the first recipient's timestamp (which is the one displayed)
+          const tA = a.recipients[0] ? a.recipients[0].timestamp : 0;
+          const tB = b.recipients[0] ? b.recipients[0].timestamp : 0;
+          return senderSortOrder === 'desc' ? tB - tA : tA - tB;
+        });
+
+        // Render sorted groups
+        groupList.forEach((group) => {
           const card = renderGroupedSenderVideoCard(group);
           if (card) videoGrid.appendChild(card);
         });
@@ -741,6 +762,57 @@ export default defineUnlistedScript(async () => {
     sendBtn?.addEventListener('click', sendFriendRequest);
     emailInput?.addEventListener('keypress', (e) => {
       if (e.key === 'Enter') sendFriendRequest();
+    });
+
+    // ---------------------------
+    // SORTING HANDLERS
+    // ---------------------------
+    function setupSortHandler(role) {
+      const btnId = role === 'receiver' ? 'sort-btn-receiver' : 'sort-btn-sender';
+      const dropdownId = role === 'receiver' ? 'sort-dropdown-receiver' : 'sort-dropdown-sender';
+
+      const btn = document.getElementById(btnId);
+      const dropdown = document.getElementById(dropdownId);
+
+      if (!btn || !dropdown) return;
+
+      // Toggle dropdown
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isVisible = dropdown.style.display === 'flex';
+        // Close all other dropdowns first (optional, but good UX)
+        document.querySelectorAll('.sort-dropdown').forEach(d => d.style.display = 'none');
+        dropdown.style.display = isVisible ? 'none' : 'flex';
+      });
+
+      // Handle sort selection
+      dropdown.querySelectorAll('button').forEach(sortOption => {
+        sortOption.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const sortOrder = sortOption.getAttribute('data-sort');
+
+          if (role === 'receiver') receiverSortOrder = sortOrder;
+          else senderSortOrder = sortOrder;
+
+          // Update active state in UI
+          dropdown.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+          sortOption.classList.add('active');
+
+          // Close dropdown
+          dropdown.style.display = 'none';
+
+          // Re-render
+          renderGrid(role);
+        });
+      });
+    }
+
+    setupSortHandler('receiver');
+    setupSortHandler('sender');
+
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', () => {
+      document.querySelectorAll('.sort-dropdown').forEach(d => d.style.display = 'none');
     });
   }
 

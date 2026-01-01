@@ -225,6 +225,66 @@
         border-radius: 50%;
       }
 
+      .sort-container {
+        position: relative;
+        margin-left: auto; /* Push to right if flex container allows */
+      }
+
+      .sort-btn {
+        background: none;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        cursor: pointer;
+        padding: 4px 8px;
+        font-size: 1.2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #666;
+        transition: background-color 0.2s;
+      }
+
+      .sort-btn:hover {
+        background-color: #f0f0f0;
+        color: #333;
+      }
+
+      .sort-dropdown {
+        display: none;
+        position: absolute;
+        right: 0;
+        top: 100%;
+        margin-top: 4px;
+        background-color: white;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        z-index: 100;
+        min-width: 140px;
+        flex-direction: column;
+      }
+
+      .sort-dropdown button {
+        background: none;
+        border: none;
+        padding: 8px 12px;
+        text-align: left;
+        cursor: pointer;
+        font-size: 0.9rem;
+        color: #333;
+        width: 100%;
+      }
+
+      .sort-dropdown button:hover {
+        background-color: #f5f7fa;
+        color: #000;
+      }
+
+      .sort-dropdown button.active {
+        font-weight: bold;
+        color: rgba(239, 57, 57);
+        background-color: #fff0f0;
+      }
     </style>
   </head>
   <body>
@@ -263,12 +323,30 @@
       </div>
 
       <section>
-        <div class="section-title">Videos Shared With You</div>
+        <div class="section-title">
+          Videos Shared With You
+          <div class="sort-container">
+            <button class="sort-btn" id="sort-btn-receiver" title="Sort videos">☰</button>
+            <div class="sort-dropdown" id="sort-dropdown-receiver">
+              <button data-sort="desc" class="active">Newest first</button>
+              <button data-sort="asc">Oldest first</button>
+            </div>
+          </div>
+        </div>
         <div class="video-grid" share-type="receiver"></div>
       </section>
 
       <section>
-        <div class="section-title">Videos You've Shared</div>
+        <div class="section-title">
+          Videos You've Shared
+          <div class="sort-container">
+            <button class="sort-btn" id="sort-btn-sender" title="Sort videos">☰</button>
+            <div class="sort-dropdown" id="sort-dropdown-sender">
+              <button data-sort="desc" class="active">Newest first</button>
+              <button data-sort="asc">Oldest first</button>
+            </div>
+          </div>
+        </div>
         <div class="video-grid" share-type="sender"></div>
       </section>
 
