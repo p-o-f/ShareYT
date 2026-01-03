@@ -81,6 +81,10 @@ To update version for Chrome/Mozilla web store:
 
 ```
 npm version patch
+
+notes for self:
+https://chatgpt.com/share/69586913-063c-8008-8f38-b0d4f31748f7
+
 ```
 
 To run development server:

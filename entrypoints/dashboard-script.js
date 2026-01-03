@@ -220,6 +220,7 @@ export default defineUnlistedScript(async () => {
 <div class="video-card" style="display: block;">
   <div class="video-thumbnail" style="width: 100%;">
     <img src="${data.thumbnailUrl}" alt="Video Thumbnail" style="width: 100%; height: auto; display: block;" />
+    ${role === 'receiver' ? '<button class="delete-video-btn" title="Delete video">X</button>' : ''}
   </div>
   <div class="video-info" style="margin-top: 8px;">
     <strong class="video-title">${data.title || 'Untitled Video'}</strong><br />
@@ -241,6 +242,23 @@ export default defineUnlistedScript(async () => {
       if (thumbnail)
         thumbnail.addEventListener('click', () => openVideo(data.videoId));
       if (title) title.addEventListener('click', () => openVideo(data.videoId));
+
+      // delete button
+      const deleteBtn = card.querySelector('.delete-video-btn');
+      if (deleteBtn) {
+        deleteBtn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          if (confirm('Are you sure you want to remove this video?')) {
+            try {
+              await deleteVideoFn({ suggestionId: data.id });
+              card.remove();
+            } catch (err) {
+              console.error('Error deleting video:', err);
+              alert('Failed to delete video.');
+            }
+          }
+        });
+      }
 
       // other
       card.querySelector('.watch-btn').addEventListener('click', () => {
