@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>ShareYT Changelog</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f5f7fa;
+        color: #333;
+      }
+
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 2rem;
+        background-color: #eef2fb;
+        border-bottom: 1px solid #ccc;
+      }
+
+      .logo {
+        font-weight: bold;
+        font-size: 1.5rem;
+        color: rgba(239, 57, 57);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .logo img {
+        height: 32px;
+        width: auto;
+      }
+
+      .back-btn {
+        background-color: rgba(239, 57, 57);
+        color: white;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: opacity 0.2s;
+      }
+
+      .back-btn:hover {
+        opacity: 0.8;
+      }
+
+      main {
+        max-width: 900px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+      }
+
+      .settings-container {
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        padding: 2rem;
+        min-height: 400px;
+      }
+
+      .settings-title {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: rgba(239, 57, 57);
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .settings-placeholder {
+        text-align: center;
+        color: #999;
+        padding: 4rem 0;
+      }
+
+      .settings-placeholder p {
+        font-size: 1.1rem;
+        margin: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="logo">
+        <img src="/icon/128.png" alt="ShareYT Logo" />
+        ShareYT
+      </div>
+      <button class="back-btn" id="back-btn">← Back to Dashboard</button>
+    </header>
+
+    <main>
+      <div class="settings-container">
+        <div class="settings-title">📝 Changelog</div>
+        <div id="changelog-content" class="settings-placeholder" style="text-align: left; padding: 1rem 2rem;">
+          <p>Loading changelog...</p>
+        </div>
+      </div>
+    </main>
+
+    <script type="module">
+      // Back button navigation
+      const backBtn = document.getElementById('back-btn');
+      backBtn?.addEventListener('click', () => {
+        window.location.href = chrome.runtime.getURL('/dashboard.html');
+      });
+
+      // Load changelog script
+      const script = document.createElement('script');
+      script.type = 'module';
+      script.src = chrome.runtime.getURL('/changelog-script.js');
+      document.body.appendChild(script);
+    </script>
+  </body>
+</html>

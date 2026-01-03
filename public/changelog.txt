@@ -1,0 +1,4 @@
+[1/2/2026, v0.0.5]
+- Added this changelog page.
+- Added changelog.txt for easier updates.
+Example regular paragraph text.

@@ -61,6 +61,7 @@
         display: flex;
         align-items: center;
         gap: 0.5rem;
+        padding: 0.5rem;
       }
 
       .profile img {
@@ -321,6 +322,7 @@
         ShareYT
       </div>
       <div class="header-right">
+        <button class="settings-btn" id="changelog-btn" title="Changelog">📝</button>
         <button class="settings-btn" id="settings-btn" title="Settings">⚙️</button>
         <div class="profile">
           <img id="profile-picture" src="" alt="Profile Picture" />
@@ -414,6 +416,12 @@
       const settingsBtn = document.getElementById('settings-btn');
       settingsBtn?.addEventListener('click', () => {
         window.location.href = chrome.runtime.getURL('/settings.html');
+      });
+
+      // Changelog button navigation
+      const changelogBtn = document.getElementById('changelog-btn');
+      changelogBtn?.addEventListener('click', () => {
+        window.location.href = chrome.runtime.getURL('/changelog.html');
       });
 
       // Load dashboard script
