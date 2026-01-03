@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>ShareYT Settings</title>
+    <title>ShareYT Changelog</title>
     <style>
       body {
         margin: 0;
@@ -96,9 +96,13 @@
 
     <main>
       <div class="settings-container">
-        <div class="settings-title">⚙️ Settings</div>
-        <div class="settings-placeholder">
-          <p>User settings will be available here soon.</p>
+        <div class="settings-title">📝 Changelog</div>
+        <div
+          id="changelog-content"
+          class="settings-placeholder"
+          style="text-align: left; padding: 1rem 2rem"
+        >
+          <p>Loading changelog...</p>
         </div>
       </div>
     </main>
@@ -110,10 +114,10 @@
         window.location.href = chrome.runtime.getURL('/dashboard.html');
       });
 
-      // Load settings script
+      // Load changelog script
       const script = document.createElement('script');
       script.type = 'module';
-      script.src = chrome.runtime.getURL('/settings-script.js');
+      script.src = chrome.runtime.getURL('/changelog-script.js');
       document.body.appendChild(script);
     </script>
   </body>

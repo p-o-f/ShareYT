@@ -164,6 +164,8 @@ export default defineUnlistedScript(async () => {
     let friendsState = [];
     let receiverVideosState = [];
     let senderVideosState = [];
+    let receiverSortOrder = 'desc'; // 'desc' | 'asc'
+    let senderSortOrder = 'desc'; // 'desc' | 'asc'
 
     // Helper to get name from UID
     const getName = (uid) => {
@@ -219,6 +221,7 @@ export default defineUnlistedScript(async () => {
 <div class="video-card" style="display: block;">
   <div class="video-thumbnail" style="width: 100%;">
     <img src="${data.thumbnailUrl}" alt="Video Thumbnail" style="width: 100%; height: auto; display: block;" />
+    ${role === 'receiver' ? '<button class="delete-video-btn" title="Delete video">X</button>' : ''}
   </div>
   <div class="video-info" style="margin-top: 8px;">
     <strong class="video-title">${data.title || 'Untitled Video'}</strong><br />
@@ -238,8 +241,25 @@ export default defineUnlistedScript(async () => {
       const thumbnail = card.querySelector('.video-thumbnail');
       const title = card.querySelector('.video-title');
       if (thumbnail)
-        thumbnail.addEventListener('click', openVideo, data.videoId);
-      if (title) title.addEventListener('click', openVideo, data.videoId);
+        thumbnail.addEventListener('click', () => openVideo(data.videoId));
+      if (title) title.addEventListener('click', () => openVideo(data.videoId));
+
+      // delete button
+      const deleteBtn = card.querySelector('.delete-video-btn');
+      if (deleteBtn) {
+        deleteBtn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          if (confirm('Are you sure you want to remove this video?')) {
+            try {
+              await deleteVideoFn({ suggestionId: data.id });
+              card.remove();
+            } catch (err) {
+              console.error('Error deleting video:', err);
+              alert('Failed to delete video.');
+            }
+          }
+        });
+      }
 
       // other
       card.querySelector('.watch-btn').addEventListener('click', () => {
@@ -313,8 +333,9 @@ export default defineUnlistedScript(async () => {
       const thumbnail = card.querySelector('.video-thumbnail');
       const title = card.querySelector('.video-title');
       if (thumbnail)
-        thumbnail.addEventListener('click', openVideo, groupData.videoId);
-      if (title) title.addEventListener('click', openVideo, groupData.videoId);
+        thumbnail.addEventListener('click', () => openVideo(groupData.videoId));
+      if (title)
+        title.addEventListener('click', () => openVideo(groupData.videoId));
 
       // Toggle Dropdown
       const trigger = card.querySelector('.recipients-trigger');
@@ -501,7 +522,14 @@ export default defineUnlistedScript(async () => {
 
       if (role === 'receiver') {
         // Standard rendering
-        videos.forEach((data) => {
+        // Sort videos
+        const sortedVideos = [...videos].sort((a, b) => {
+          const tA = a.timestamp ? a.timestamp.seconds : 0;
+          const tB = b.timestamp ? b.timestamp.seconds : 0;
+          return receiverSortOrder === 'desc' ? tB - tA : tA - tB;
+        });
+
+        sortedVideos.forEach((data) => {
           videoGrid.appendChild(renderVideoCard(data, role));
         });
       } else {
@@ -521,14 +549,27 @@ export default defineUnlistedScript(async () => {
           groups[v.videoId].recipients.push({
             to: v.to,
             timestamp: v.timestamp ? v.timestamp.seconds : Date.now() / 1000,
-            timestamp: v.timestamp ? v.timestamp.seconds : Date.now() / 1000,
             docId: v.id, // We need the document ID to delete it
             reaction: v.reaction, // Include reaction data
           });
         });
 
-        // Render groups
-        Object.values(groups).forEach((group) => {
+        // Convert to array and sort
+        const groupList = Object.values(groups);
+        groupList.forEach((g) => {
+          // Ensure recipients are sorted by timestamp asc so we know which one is the "first" (displayed)
+          g.recipients.sort((a, b) => a.timestamp - b.timestamp);
+        });
+
+        groupList.sort((a, b) => {
+          // Sort based on the first recipient's timestamp (which is the one displayed)
+          const tA = a.recipients[0] ? a.recipients[0].timestamp : 0;
+          const tB = b.recipients[0] ? b.recipients[0].timestamp : 0;
+          return senderSortOrder === 'desc' ? tB - tA : tA - tB;
+        });
+
+        // Render sorted groups
+        groupList.forEach((group) => {
           const card = renderGroupedSenderVideoCard(group);
           if (card) videoGrid.appendChild(card);
         });
@@ -741,6 +782,65 @@ export default defineUnlistedScript(async () => {
     sendBtn?.addEventListener('click', sendFriendRequest);
     emailInput?.addEventListener('keypress', (e) => {
       if (e.key === 'Enter') sendFriendRequest();
+    });
+
+    // ---------------------------
+    // SORTING HANDLERS
+    // ---------------------------
+    function setupSortHandler(role) {
+      const btnId =
+        role === 'receiver' ? 'sort-btn-receiver' : 'sort-btn-sender';
+      const dropdownId =
+        role === 'receiver' ? 'sort-dropdown-receiver' : 'sort-dropdown-sender';
+
+      const btn = document.getElementById(btnId);
+      const dropdown = document.getElementById(dropdownId);
+
+      if (!btn || !dropdown) return;
+
+      // Toggle dropdown
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isVisible = dropdown.style.display === 'flex';
+        // Close all other dropdowns first (optional, but good UX)
+        document
+          .querySelectorAll('.sort-dropdown')
+          .forEach((d) => (d.style.display = 'none'));
+        dropdown.style.display = isVisible ? 'none' : 'flex';
+      });
+
+      // Handle sort selection
+      dropdown.querySelectorAll('button').forEach((sortOption) => {
+        sortOption.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const sortOrder = sortOption.getAttribute('data-sort');
+
+          if (role === 'receiver') receiverSortOrder = sortOrder;
+          else senderSortOrder = sortOrder;
+
+          // Update active state in UI
+          dropdown
+            .querySelectorAll('button')
+            .forEach((b) => b.classList.remove('active'));
+          sortOption.classList.add('active');
+
+          // Close dropdown
+          dropdown.style.display = 'none';
+
+          // Re-render
+          renderGrid(role);
+        });
+      });
+    }
+
+    setupSortHandler('receiver');
+    setupSortHandler('sender');
+
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', () => {
+      document
+        .querySelectorAll('.sort-dropdown')
+        .forEach((d) => (d.style.display = 'none'));
     });
   }
 
