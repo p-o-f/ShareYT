@@ -239,8 +239,8 @@ export default defineUnlistedScript(async () => {
       const thumbnail = card.querySelector('.video-thumbnail');
       const title = card.querySelector('.video-title');
       if (thumbnail)
-        thumbnail.addEventListener('click', openVideo, data.videoId);
-      if (title) title.addEventListener('click', openVideo, data.videoId);
+        thumbnail.addEventListener('click', () => openVideo(data.videoId));
+      if (title) title.addEventListener('click', () => openVideo(data.videoId));
 
       // other
       card.querySelector('.watch-btn').addEventListener('click', () => {
@@ -314,8 +314,8 @@ export default defineUnlistedScript(async () => {
       const thumbnail = card.querySelector('.video-thumbnail');
       const title = card.querySelector('.video-title');
       if (thumbnail)
-        thumbnail.addEventListener('click', openVideo, groupData.videoId);
-      if (title) title.addEventListener('click', openVideo, groupData.videoId);
+        thumbnail.addEventListener('click', () => openVideo(groupData.videoId));
+      if (title) title.addEventListener('click', () => openVideo(groupData.videoId));
 
       // Toggle Dropdown
       const trigger = card.querySelector('.recipients-trigger');
