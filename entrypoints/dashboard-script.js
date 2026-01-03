@@ -123,10 +123,11 @@ export default defineUnlistedScript(async () => {
       const html = `
         <div class="friend-tile" style="display: flex; align-items: center; justify-content: space-between; padding: 8px 0;">
           <div style="display: flex; align-items: center;">
-            <img src="${friendData.img ||
-        friendData.photoURL ||
-        'https://www.gravatar.com/avatar?d=mp'
-        }" alt="Profile Picture" style="width: 32px; height: 32px; border-radius: 50%; margin-right: 12px;" />
+            <img src="${
+              friendData.img ||
+              friendData.photoURL ||
+              'https://www.gravatar.com/avatar?d=mp'
+            }" alt="Profile Picture" style="width: 32px; height: 32px; border-radius: 50%; margin-right: 12px;" />
             <span>${friendData.label || friendData.displayName || friendData.email}</span>
           </div>
           <button class="remove-friend-btn" style="background-color: #f44336; color: white; border: none; border-radius: 4px; width: 24px; height: 24px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; padding: 0; font-size: 14px;">X</button>
@@ -207,13 +208,13 @@ export default defineUnlistedScript(async () => {
 
       const formattedDate = dateObj
         ? dateObj.toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-          hour: 'numeric',
-          minute: 'numeric',
-          hour12: true,
-        })
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: 'numeric',
+            hour12: true,
+          })
         : 'Unknown date';
 
       const html = `
@@ -333,7 +334,8 @@ export default defineUnlistedScript(async () => {
       const title = card.querySelector('.video-title');
       if (thumbnail)
         thumbnail.addEventListener('click', () => openVideo(groupData.videoId));
-      if (title) title.addEventListener('click', () => openVideo(groupData.videoId));
+      if (title)
+        title.addEventListener('click', () => openVideo(groupData.videoId));
 
       // Toggle Dropdown
       const trigger = card.querySelector('.recipients-trigger');
@@ -786,8 +788,10 @@ export default defineUnlistedScript(async () => {
     // SORTING HANDLERS
     // ---------------------------
     function setupSortHandler(role) {
-      const btnId = role === 'receiver' ? 'sort-btn-receiver' : 'sort-btn-sender';
-      const dropdownId = role === 'receiver' ? 'sort-dropdown-receiver' : 'sort-dropdown-sender';
+      const btnId =
+        role === 'receiver' ? 'sort-btn-receiver' : 'sort-btn-sender';
+      const dropdownId =
+        role === 'receiver' ? 'sort-dropdown-receiver' : 'sort-dropdown-sender';
 
       const btn = document.getElementById(btnId);
       const dropdown = document.getElementById(dropdownId);
@@ -799,12 +803,14 @@ export default defineUnlistedScript(async () => {
         e.stopPropagation();
         const isVisible = dropdown.style.display === 'flex';
         // Close all other dropdowns first (optional, but good UX)
-        document.querySelectorAll('.sort-dropdown').forEach(d => d.style.display = 'none');
+        document
+          .querySelectorAll('.sort-dropdown')
+          .forEach((d) => (d.style.display = 'none'));
         dropdown.style.display = isVisible ? 'none' : 'flex';
       });
 
       // Handle sort selection
-      dropdown.querySelectorAll('button').forEach(sortOption => {
+      dropdown.querySelectorAll('button').forEach((sortOption) => {
         sortOption.addEventListener('click', (e) => {
           e.stopPropagation();
           const sortOrder = sortOption.getAttribute('data-sort');
@@ -813,7 +819,9 @@ export default defineUnlistedScript(async () => {
           else senderSortOrder = sortOrder;
 
           // Update active state in UI
-          dropdown.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+          dropdown
+            .querySelectorAll('button')
+            .forEach((b) => b.classList.remove('active'));
           sortOption.classList.add('active');
 
           // Close dropdown
@@ -830,7 +838,9 @@ export default defineUnlistedScript(async () => {
 
     // Close dropdowns when clicking outside
     document.addEventListener('click', () => {
-      document.querySelectorAll('.sort-dropdown').forEach(d => d.style.display = 'none');
+      document
+        .querySelectorAll('.sort-dropdown')
+        .forEach((d) => (d.style.display = 'none'));
     });
   }
 
