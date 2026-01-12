@@ -58,9 +58,9 @@ to configure:
 npx publish-extension init
 
 npx publish-extension `
-  --firefox-zip .output/shareyt-0.0.5-firefox.zip `
-  --firefox-sources-zip .output/shareyt-0.0.5-sources.zip `
-  --edge-zip .output/shareyt-0.0.5-chrome.zip
+  --firefox-zip .output/shareyt-0.0.6-firefox.zip `
+  --firefox-sources-zip .output/shareyt-0.0.6-sources.zip `
+  --edge-zip .output/shareyt-0.0.6-chrome.zip
 
 ```
 
