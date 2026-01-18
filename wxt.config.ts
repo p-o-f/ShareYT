@@ -70,6 +70,7 @@ export default defineConfig({
             'dashboard-script.js',
             'settings.html',
             'settings-script.js',
+            'icon/*.png', // For content script to load logo in Friends Feed
           ],
           matches: ['<all_urls>'],
         },
