@@ -47,6 +47,28 @@ function injectFriendsFeedStyles() {
       font-family: 'Roboto', 'Arial', sans-serif;
     }
 
+    .shareyt-dashboard-btn {
+      margin-left: auto;
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #aaa;
+      padding: 6px 14px;
+      border-radius: 18px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .shareyt-dashboard-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+
     .shareyt-feed-scroll {
       display: flex;
       gap: 12px;
@@ -133,6 +155,38 @@ function injectFriendsFeedStyles() {
     .shareyt-dashboard-link:hover {
       text-decoration: underline;
     }
+
+    .shareyt-signin-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px 0;
+      width: 100%;
+      text-align: center;
+    }
+
+    .shareyt-signin-text {
+      color: #f1f1f1;
+      font-size: 14px;
+      margin-bottom: 12px;
+    }
+
+    .shareyt-signin-btn {
+      background-color: #ef3939;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 18px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .shareyt-signin-btn:hover {
+      background-color: #c92c2c;
+    }
   `;
   document.head.appendChild(styles);
 }
@@ -153,8 +207,18 @@ function createFriendsFeedSection(): HTMLElement {
   title.className = 'shareyt-title';
   title.textContent = 'ShareYT Friends Feed';
 
+  const dashboardBtn = document.createElement('button');
+  dashboardBtn.className = 'shareyt-dashboard-btn';
+  dashboardBtn.textContent = 'View Dashboard';
+  dashboardBtn.title = 'Open ShareYT Dashboard';
+  dashboardBtn.onclick = () => {
+    const dashboardUrl = chrome.runtime.getURL('/dashboard.html');
+    window.open(dashboardUrl, '_blank');
+  };
+
   header.appendChild(logo);
   header.appendChild(title);
+  header.appendChild(dashboardBtn);
 
   const scrollContainer = document.createElement('div');
   scrollContainer.className = 'shareyt-feed-scroll';
@@ -219,6 +283,35 @@ function renderEmptyState(): HTMLElement {
   }, 0);
 
   return empty;
+}
+
+function renderSignInState(): HTMLElement {
+  const container = document.createElement('div');
+  container.className = 'shareyt-signin-container';
+
+  const text = document.createElement('div');
+  text.className = 'shareyt-signin-text';
+  text.textContent = 'Sign in to see videos shared by your friends (if you\'re already logged in, try refreshing the page)';
+
+  const btn = document.createElement('button');
+  btn.className = 'shareyt-signin-btn';
+  btn.textContent = 'Sign In to ShareYT';
+
+  btn.onclick = async () => {
+    try {
+      await messaging.sendMessage('auth:signIn');
+    } catch (e) {
+      console.error('Failed to send login message:', e);
+      // Fallback: alert the user or try opening dashboard
+      const dashboardUrl = chrome.runtime.getURL('/dashboard.html');
+      window.open(dashboardUrl, '_blank');
+    }
+  };
+
+  container.appendChild(text);
+  container.appendChild(btn);
+
+  return container;
 }
 
 // Track the observer for cleanup
@@ -370,14 +463,23 @@ async function updateFriendsFeedContent() {
   const scrollContainer = feedSection.querySelector('.shareyt-feed-scroll');
   if (!scrollContainer) return;
 
-  // Get videos and friends list from storage
-  const [videos, friendsList] = await Promise.all([
+
+
+  // Get user status and data
+  const [user, videos, friendsList] = await Promise.all([
+    storage.getItem<SerializedUser>('local:user'),
     storage.getItem<any[]>('local:suggestedVideos'),
     storage.getItem<any[]>('local:friendsList')
   ]);
 
   // Clear current content
   scrollContainer.innerHTML = '';
+
+  // Check if logged in
+  if (!user || !user.uid) {
+    scrollContainer.appendChild(renderSignInState());
+    return;
+  }
 
   if (!videos || videos.length === 0) {
     scrollContainer.appendChild(renderEmptyState());
@@ -1180,9 +1282,10 @@ export default defineContentScript({
         isLoggedIn = true;
         waitForControls();
         startLoggingTimeOnceReady();
-        // Inject Friends Feed on homepage
-        injectFriendsFeed();
       }
+
+      // Always try to inject Friends Feed on homepage (it handles login check internally)
+      injectFriendsFeed();
     }
 
     storage.watch<SerializedUser>(
@@ -1195,7 +1298,8 @@ export default defineContentScript({
           isLoggedIn = false;
           console.log('isLoggedin status after logout:', isLoggedIn);
           cleanUpState();
-          removeFriendsFeed(); // Explicitly remove feed on logout
+          // Don't remove feed, just update it to show sign in state
+          updateFriendsFeedContent();
 
           console.log(
             'All observers and intervals were cleared due to user logout',
@@ -1215,9 +1319,8 @@ export default defineContentScript({
 
     // Watch for new shared videos to update Friends Feed in real-time
     storage.watch('local:suggestedVideos', () => {
-      if (isLoggedIn) {
-        updateFriendsFeedContent();
-      }
+      // Update feed regardless of login state (if logged out, updateFriendsFeedContent handles it)
+      updateFriendsFeedContent();
     });
 
     let lastUrl = window.location.href;
