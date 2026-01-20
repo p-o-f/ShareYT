@@ -302,7 +302,7 @@ While App Check with **reCAPTCHA v3** is theoretically stronger because it measu
 
 # File Structure
 
-As of 12/6/2025, for feat/sharing-refine
+As of 1/19/2026
 
 ```
 SHAREYT
@@ -314,11 +314,16 @@ SHAREYT
 | | |----index.ts > Background context code (Central Data Hub). Handles Auth, Listeners, Notifications.
 | | |----offscreenInteraction.ts > [Legacy]
 | |
+| |----changelog > The html for the changelog page
+| | |----index.html
+| |----changelog-script.js
+| |
 | |----content > Contains the contentscript that is injected when YouTube is detected
-| | |----index.ts > Uses storage.watch() for reactive dropdown.
+| | |----index.ts > Injects Friends Feed on homepage and Share button on video player.
 | |
 | |----dashboard > The html for the extension's dashboard page
 | | |----index.html
+| |----dashboard-script.js > Code for the extension's dashboard page
 | |
 | |----offscreen > Folder for files in offscreen context
 | | |----index.html
@@ -332,7 +337,11 @@ SHAREYT
 | | |----LoginForm.tsx
 | | |----main.tsx
 | | |----style.css
-| |----dashboard-script.js > Code for the extension's dashboard page (Refactored to use storage)
+| |
+| |----settings > The html for the settings page
+| | |----index.html
+| |----settings-script.js
+| |
 |
 |----functions > Contains all custom cloud functions for Firebase, used for safe writes to Firestore
 | |
@@ -342,10 +351,12 @@ SHAREYT
 |
 |----public
 | |
-| |----assets---|...(expandable folder, but irrelevant)
-| |----icon-----|...(expandable folder, but irrelevant)
+| |----assets
+| |----icon
+| | |----128.png
+| | |----raw logo.png
 | |
-| |----icon.png > Future icon for ShareYT
+| |----changelog.txt
 | |----index.html > Standard Firebase Hosting startup page
 | |----signInWithPopup.html > html page for signInWithPopup
 | |----signInWithPopup.js > js file for signInWithPopup
