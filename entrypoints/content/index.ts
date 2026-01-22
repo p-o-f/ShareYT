@@ -99,11 +99,108 @@ function injectFriendsFeedStyles() {
       border-radius: 8px;
       overflow: hidden;
       background: rgba(255, 255, 255, 0.05);
+      position: relative;
     }
 
     .shareyt-video-card:hover {
       transform: scale(1.03);
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+
+    .shareyt-delete-btn {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      background: rgba(0, 0, 0, 0.6);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: bold;
+      opacity: 0;
+      transition: opacity 0.2s, background 0.2s;
+      z-index: 10;
+      line-height: 1;
+    }
+
+    .shareyt-video-card:hover .shareyt-delete-btn {
+      opacity: 1;
+    }
+
+    .shareyt-delete-btn:hover {
+      background: #f44336;
+    }
+
+    .shareyt-request-alert {
+      background: #ef3939;
+      color: white;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 12px;
+      margin-left: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .shareyt-request-alert:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+      filter: brightness(1.1);
+    }
+
+    .shareyt-reaction-container {
+      margin-top: 6px;
+    }
+
+    .shareyt-reaction-toggle {
+      background: none;
+      border: none;
+      color: #aaa;
+      cursor: pointer;
+      padding: 0;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: color 0.2s;
+    }
+
+    .shareyt-reaction-toggle:hover {
+      color: #ef3939;
+    }
+
+    .shareyt-reaction-content {
+      display: none;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 8px;
+      border-radius: 6px;
+      margin-top: 6px;
+      font-size: 12px;
+      color: #e0e0e0;
+      border-left: 3px solid #ef3939;
+      line-height: 1.4;
+      white-space: pre-wrap;
+    }
+
+    .shareyt-reaction-content.open {
+      display: block;
+      animation: fadeIn 0.2s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
     .shareyt-thumbnail {
@@ -218,6 +315,12 @@ function createFriendsFeedSection(): HTMLElement {
 
   header.appendChild(logo);
   header.appendChild(title);
+
+  // Pending Requests Alert (Logic handled in update)
+  const alertContainer = document.createElement('div');
+  alertContainer.id = 'shareyt-request-alert-container';
+  header.appendChild(alertContainer);
+
   header.appendChild(dashboardBtn);
 
   const scrollContainer = document.createElement('div');
@@ -241,6 +344,28 @@ function renderFeedVideoCard(
   thumbnail.src = video.thumbnailUrl || 'https://i.ytimg.com/vi/default/hqdefault.jpg';
   thumbnail.alt = video.title || 'Video';
 
+  const deleteBtn = document.createElement('button');
+  deleteBtn.className = 'shareyt-delete-btn';
+  deleteBtn.innerHTML = '&times;';
+  deleteBtn.title = 'Remove';
+  deleteBtn.onclick = async (e) => {
+    e.stopPropagation();
+    if (confirm('Remove this video from your feed?')) {
+      try {
+        card.style.opacity = '0.5';
+        // Use existing video:delete handler in background which takes { suggestionId } as data
+        await messaging.sendMessage('video:delete', { suggestionId: video.id });
+        card.remove();
+
+        // If no more cards, refreshing might be needed to show "empty state" but removing is good enough for now
+      } catch (err) {
+        console.error('Failed to delete video:', err);
+        card.style.opacity = '1';
+        alert('Failed to delete video. Please try again.');
+      }
+    }
+  };
+
   const info = document.createElement('div');
   info.className = 'shareyt-card-info';
 
@@ -251,12 +376,67 @@ function renderFeedVideoCard(
 
   const sharedBy = document.createElement('span');
   sharedBy.className = 'shareyt-shared-by';
-  sharedBy.textContent = `Shared by ${friendName}`;
+
+  // Format Date
+  let dateLabel = '';
+  if (video.timestamp) {
+    try {
+      const date = video.timestamp.seconds
+        ? new Date(video.timestamp.seconds * 1000)
+        : new Date(video.timestamp);
+
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffHrs = diffMs / (1000 * 60 * 60);
+
+      // If less than 24 hours, show relative or time
+      if (diffHrs < 24) {
+        dateLabel = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      } else {
+        dateLabel = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+      }
+    } catch (e) {
+      console.error('Error formatting date:', e);
+    }
+  }
+
+  sharedBy.textContent = `Shared by ${friendName}${dateLabel ? ' • ' + dateLabel : ''}`;
 
   info.appendChild(titleEl);
   info.appendChild(sharedBy);
 
+  if (video.reaction) {
+    const reactionContainer = document.createElement('div');
+    reactionContainer.className = 'shareyt-reaction-container';
+
+    const toggle = document.createElement('button');
+    toggle.className = 'shareyt-reaction-toggle';
+    toggle.innerHTML = '💬 View Message';
+    toggle.title = 'Show reaction';
+
+    const content = document.createElement('div');
+    content.className = 'shareyt-reaction-content';
+    content.textContent = video.reaction;
+
+    toggle.onclick = (e) => {
+      e.stopPropagation(); // Prevent opening video
+      const isOpen = content.classList.contains('open');
+      if (isOpen) {
+        content.classList.remove('open');
+        toggle.innerHTML = '💬 View Message';
+      } else {
+        content.classList.add('open');
+        toggle.innerHTML = '💬 Hide Message';
+      }
+    };
+
+    reactionContainer.appendChild(toggle);
+    reactionContainer.appendChild(content);
+    info.appendChild(reactionContainer);
+  }
+
   card.appendChild(thumbnail);
+  card.appendChild(deleteBtn);
   card.appendChild(info);
 
   card.onclick = () => {
@@ -466,13 +646,33 @@ async function updateFriendsFeedContent() {
 
 
   // Get user status and data
-  const [user, videos, friendsList] = await Promise.all([
+  const [user, videos, friendsList, friendRequests] = await Promise.all([
     storage.getItem<SerializedUser>('local:user'),
     storage.getItem<any[]>('local:suggestedVideos'),
-    storage.getItem<any[]>('local:friendsList')
+    storage.getItem<any[]>('local:friendsList'),
+    storage.getItem<Record<string, any>>('local:friendRequests'), // Fetch requests
   ]);
 
-  // Clear current content
+  // Update Friend Request Alert
+  const alertContainer = document.getElementById('shareyt-request-alert-container');
+  if (alertContainer) {
+    alertContainer.innerHTML = ''; // Clear previous
+    if (friendRequests && Object.keys(friendRequests).length > 0) {
+      const count = Object.keys(friendRequests).length;
+      const alert = document.createElement('div');
+      alert.className = 'shareyt-request-alert';
+      alert.textContent = `${count} pending friend request${count > 1 ? 's' : ''}`;
+      alert.title = 'Click to view requests in dashboard';
+      alert.onclick = () => {
+        const dashboardUrl = chrome.runtime.getURL('/dashboard.html#friends'); // Anchor might not work if JS handles routing, but harmless
+        window.open(dashboardUrl, '_blank');
+      };
+      // Insert before dashboard button if possible, or just append
+      alertContainer.appendChild(alert);
+    }
+  }
+
+  // Populate videos
   scrollContainer.innerHTML = '';
 
   // Check if logged in
@@ -1320,6 +1520,11 @@ export default defineContentScript({
     // Watch for new shared videos to update Friends Feed in real-time
     storage.watch('local:suggestedVideos', () => {
       // Update feed regardless of login state (if logged out, updateFriendsFeedContent handles it)
+      updateFriendsFeedContent();
+    });
+
+    // Watch for friend requests to update Friends Feed alert
+    storage.watch('local:friendRequests', () => {
       updateFriendsFeedContent();
     });
 

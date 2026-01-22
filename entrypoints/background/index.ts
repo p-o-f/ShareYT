@@ -479,6 +479,8 @@ export default defineBackground(() => {
     createBrowserNotification(title, message, isClickable);
   });
 
+
+
   messaging.onMessage('video:delete', ({ data }) => {
     const deleteVideo = httpsCallable(functions, 'deleteVideo');
     deleteVideo(data);
