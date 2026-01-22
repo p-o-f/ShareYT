@@ -5,6 +5,8 @@ Published to Chrome Web Store, Mozilla Add-ons, and Microsoft Edge.
 
 # MV3 compliance branch
 
+Merged in this PR: https://github.com/p-o-f/ShareYT/pull/16
+
 ## Why This Was Needed
 
 Chrome Web Store rejected the extension (Violation ID: Blue Argon) due to remotely hosted code in Manifest V3. The Firebase Functions SDK (imported from "firebase/functions") contains internal App Check integration code with these URL strings:
