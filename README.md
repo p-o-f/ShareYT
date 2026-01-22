@@ -57,12 +57,18 @@ More info (from my personal research)
 https://github.com/aklinker1/publish-browser-extension
 
 to configure:
+1)
 npx publish-extension init
 
+2)
+npm run zip
+npm run zip:firefox
+
+3)
 npx publish-extension `
-  --firefox-zip .output/shareyt-0.0.6-firefox.zip `
-  --firefox-sources-zip .output/shareyt-0.0.6-sources.zip `
-  --edge-zip .output/shareyt-0.0.6-chrome.zip
+  --firefox-zip .output/shareyt-0.0.7-firefox.zip `
+  --firefox-sources-zip .output/shareyt-0.0.7-sources.zip `
+  --edge-zip .output/shareyt-0.0.7-chrome.zip
 
 ```
 
