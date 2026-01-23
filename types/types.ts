@@ -9,4 +9,10 @@ export type VideoRecommendation = {
   to: string | null;
   thumbnailUrl: string | null;
   title: string | null;
+  watchStatus?: {
+    progress: number;
+    duration: number;
+    lastUpdated: any;
+  };
 };
+

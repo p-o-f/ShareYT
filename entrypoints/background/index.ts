@@ -484,6 +484,11 @@ export default defineBackground(() => {
     deleteVideo(data);
   });
 
+  messaging.onMessage('video:updateProgress', ({ data }) => {
+    const updateWatchStatus = httpsCallable(functions, 'updateWatchStatus');
+    updateWatchStatus(data);
+  });
+
   messaging.onMessage('video:updateReaction', ({ data }) => {
     const updateReaction = httpsCallable(functions, 'updateReaction');
     updateReaction(data);

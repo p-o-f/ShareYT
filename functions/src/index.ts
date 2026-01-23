@@ -610,3 +610,58 @@ export const batchGetUserProfiles = functions.https.onCall(
     return { users, notFound };
   },
 );
+return { users, notFound };
+  },
+);
+
+export const updateWatchStatus = functions.https.onCall(
+  async (data, context) => {
+    // Require auth
+    const uidMe = context.auth?.uid;
+    if (!uidMe) {
+      throw new functions.https.HttpsError('unauthenticated', 'Login required');
+    }
+
+    const { videoId, progress, duration } = data;
+
+    if (!videoId || typeof progress !== 'number' || typeof duration !== 'number') {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'Invalid arguments',
+      );
+    }
+
+    // Update all video suggestions where:
+    // 1. I am the recipient (to == uidMe)
+    // 2. The videoId matches
+    // This allows tracking progress even if multiple people sent the same video.
+    try {
+      const videosRef = db.collection('suggestedVideos');
+      const snapshot = await videosRef
+        .where('to', '==', uidMe)
+        .where('videoId', '==', videoId)
+        .get();
+
+      if (snapshot.empty) {
+        return { success: true, updated: 0 };
+      }
+
+      const batch = db.batch();
+      const status = {
+        progress,
+        duration,
+        lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+      };
+
+      snapshot.docs.forEach((doc) => {
+        batch.update(doc.ref, { watchStatus: status });
+      });
+
+      await batch.commit();
+      return { success: true, updated: snapshot.size };
+    } catch (err) {
+      console.error('Error updating watch status:', err);
+      throw new functions.https.HttpsError('internal', 'Update failed');
+    }
+  },
+);

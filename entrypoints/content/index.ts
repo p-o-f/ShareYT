@@ -18,6 +18,7 @@ export default defineContentScript({
     let controlsIntervalId: ReturnType<typeof setTimeout> | null = null;
     let timeLoggerIntervalId: ReturnType<typeof setTimeout> | null = null;
     let timeLoggerReadyCheckerId: ReturnType<typeof setTimeout> | null = null;
+    let watchCleanup: (() => void) | null = null;
 
     const injectButton = (): boolean => {
       const controls = document.querySelector('.ytp-left-controls');
@@ -690,6 +691,53 @@ export default defineContentScript({
       }, 1000);
     };
 
+    // Watch Tracking Logic
+    const startWatchTracking = () => {
+      if (watchCleanup) watchCleanup();
+
+      const video = document.querySelector('video');
+      if (!video) return;
+
+      const url = window.location.href;
+      const getVideoIdFromUrl = (url: string) => {
+        const match =
+          url.match(/[?&]v=([^&]+)/) ||
+          url.match(/youtu\.be\/([^?&]+)/) ||
+          url.match(/\/embed\/([^?/?&]+)/);
+        return match ? match[1] : null;
+      };
+      const videoId = getVideoIdFromUrl(url);
+      if (!videoId) return;
+
+      let lastSavedProgress = 0; // percent 0-100
+
+      const handleTimeUpdate = () => {
+        if (video.paused || video.seeking) return;
+        const duration = video.duration;
+        const current = video.currentTime;
+        if (!duration || duration <= 0) return;
+
+        const progress = (current / duration) * 100;
+
+        // Update every 5%
+        if (progress - lastSavedProgress >= 5) {
+          lastSavedProgress = progress;
+          console.log(`[ShareYT] Saving progress: ${progress.toFixed(1)}%`);
+          messaging.sendMessage('video:updateProgress', {
+            videoId,
+            progress: Math.floor(progress),
+            duration: Math.floor(duration),
+          });
+        }
+      };
+
+      video.addEventListener('timeupdate', handleTimeUpdate);
+      watchCleanup = () => {
+        video.removeEventListener('timeupdate', handleTimeUpdate);
+        watchCleanup = null;
+      };
+    };
+
     // Start logging current playback time every 10 seconds, and get total duration once (since it doesn't change)
     const startLoggingTimeOnceReady = () => {
       if (timeLoggerReadyCheckerId) clearInterval(timeLoggerReadyCheckerId);
@@ -707,6 +755,7 @@ export default defineContentScript({
           console.log(
             'Video timer elements found (user is watching video), starting time logger every 10 seconds...',
           );
+          startWatchTracking();
 
           timeLoggerIntervalId = setInterval(() => {
             if (!isLoggedIn) return;
@@ -746,6 +795,9 @@ export default defineContentScript({
       if (timeLoggerIntervalId) {
         clearInterval(timeLoggerIntervalId);
         timeLoggerIntervalId = null;
+      }
+      if (watchCleanup) {
+        watchCleanup();
       }
     };
     // START OF DRIVER CODE FOR MAIN: KEEPS CONTENT SCRIPT RUNNING SMOOTHLY ---------------------------------------------------------------------

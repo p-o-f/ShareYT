@@ -40,6 +40,11 @@ interface MessagingProtocol {
     suggestionId: string;
     reaction: string;
   }) => void;
+  'video:updateProgress': (data: {
+    videoId: string;
+    progress: number;
+    duration: number;
+  }) => void;
 }
 
 export const messaging = defineExtensionMessaging<MessagingProtocol>();

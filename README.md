@@ -1,9 +1,15 @@
 # ShareYT - Web Extension
 
+[![Chrome Web Store](https://img.shields.io/badge/Chrome-Available-brightgreen?style=for-the-badge&logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/shareyt/mcmgphebifagpfjabelekgacmkgmjeek)
+[![Firefox Add-ons](https://img.shields.io/badge/Firefox-Available-orange?style=for-the-badge&logo=firefox&logoColor=white)](https://addons.mozilla.org/en-US/firefox/addon/shareyt/)
+[![Microsoft Edge](https://img.shields.io/badge/Edge-Available-blue?style=for-the-badge&logo=microsoftedge&logoColor=white)](https://microsoftedge.microsoft.com/addons/detail/shareyt/jkgadaocgjffkkkkndhcklhahbplgohh)
+
 A free, cross-platform browser extension that allows you to easily share and react to YouTube videos with your friends.
 Published to Chrome Web Store, Mozilla Add-ons, and Microsoft Edge.
 
 # MV3 compliance branch
+
+Merged in this PR: https://github.com/p-o-f/ShareYT/pull/16
 
 ## Why This Was Needed
 
