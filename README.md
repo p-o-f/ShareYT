@@ -1,13 +1,19 @@
 # ShareYT - Web Extension
 
+[![Chrome Web Store](https://img.shields.io/badge/Chrome-Available-brightgreen?style=for-the-badge&logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/shareyt/mcmgphebifagpfjabelekgacmkgmjeek)
+[![Firefox Add-ons](https://img.shields.io/badge/Firefox-Available-orange?style=for-the-badge&logo=firefox&logoColor=white)](https://addons.mozilla.org/en-US/firefox/addon/shareyt/)
+[![Microsoft Edge](https://img.shields.io/badge/Edge-Available-blue?style=for-the-badge&logo=microsoftedge&logoColor=white)](https://microsoftedge.microsoft.com/addons/detail/shareyt/jkgadaocgjffkkkkndhcklhahbplgohh)
+
 A free, cross-platform browser extension that allows you to easily share and react to YouTube videos with your friends.
 Published to Chrome Web Store, Mozilla Add-ons, and Microsoft Edge.
 
 # MV3 compliance branch
 
+Merged in this PR: https://github.com/p-o-f/ShareYT/pull/16
+
 ## Why This Was Needed
 
-Chrome Web Store rejected the extension (Violation ID: Blue Argon) due to remotely hosted code in Manifest V3. The Firebase Functions SDK (imported from "firebase/functions") contains internal App Check integration code with these URL strings:
+Chrome Web Store rejected the extension (Violation ID: Blue Argon) due to remotely hosted code in Manifest V3. The Firebase Functions SDK (imported from "firebase/functions") contains internal App Check logic that references three URLs:
 
 https://apis.google.com/js/api.js
 https://www.google.com/recaptcha/api.js
@@ -24,7 +30,7 @@ The solution uses a **post-build script** (`strip-firebase-urls.js`) that automa
 3. **Replace**: Each URL string is replaced with an empty string (`""`)
 4. **Result**: Extension remains functionally identical (we don't use App Check anyway), but the URL strings that trigger Chrome's scanner are gone
 
-**Technical Note**: We tried using Vite/Rollup plugins to strip URLs during the build process, but Firebase SDK is pre-bundled in node_modules, so the URLs only appear in the final output. A post-build script that processes the compiled files is the only reliable approach.
+**Technical Note**: We tried using Vite/Rollup plugins to strip URLs during the build process, but Firebase SDK is pre-bundled in node_modules, so the URLs only appear in the final output. A post-build script was the cleanest solution.
 
 **Changes Made**:
 
@@ -55,12 +61,18 @@ More info (from my personal research)
 https://github.com/aklinker1/publish-browser-extension
 
 to configure:
+1)
 npx publish-extension init
 
+2)
+npm run zip
+npm run zip:firefox
+
+3)
 npx publish-extension `
-  --firefox-zip .output/shareyt-0.0.5-firefox.zip `
-  --firefox-sources-zip .output/shareyt-0.0.5-sources.zip `
-  --edge-zip .output/shareyt-0.0.5-chrome.zip
+  --firefox-zip .output/shareyt-0.0.7-firefox.zip `
+  --firefox-sources-zip .output/shareyt-0.0.7-sources.zip `
+  --edge-zip .output/shareyt-0.0.7-chrome.zip
 
 ```
 
@@ -123,7 +135,7 @@ This extension provides an overlay directly on the YouTube video player to allow
 **Justification:**
 The extension requires user authentication to secure the sharing functionality.
 
-- **OAuth2:** The extension uses `chrome.identity.launchWebAuthFlow` to authenticate users via Google Sign-In (Firebase Auth). This ensures that users can only send and receive video recommendations from their actual friends.
+- **OAuth2:** The extension uses `chrome.identity.launchWebAuthFlow` to authenticate users via Google Sign-In (Firebase Auth). This ensures that users can only send and receive video recommendations from authenticated friends.
 
 ## Notifications
 
@@ -174,7 +186,7 @@ Data usage requirements and justifications for Chrome Web Store:
 
 **Last Updated:** December 7, 2025
 
-ShareYT ("we", "our", or "us") is dedicated to protecting privacy for its users. This Privacy Policy explains how we collect, use, and safeguard your information when you use our browser extension. This policy is subject to change in the future.
+ShareYT ("we", "our", or "us") is dedicated to protecting privacy for its users. This Privacy Policy explains how we collect, use, and safeguard your information when you use our browser extension.
 
 ## 1. Information We Collect
 
@@ -213,7 +225,7 @@ We use your information strictly to facilitate the core functionality of the ext
 
 - **Data Storage:** All user data is stored securely in **Google Firebase (Firestore & Authentication)**.
 - **Security:** We rely on Firebase's industry-standard security infrastructure. All data transmission occurs over secure HTTPS connections.
-- **Local Storage:** To improve performance, we locally cache your friends list and recent shares in your browser's local storage (`chrome.storage.local`). This data remains on your device and is synchronized with Firebase.
+- **Local Storage:** To improve performance, we locally cache your friends list and recent shares in your browser's local storage (`chrome.storage.local`). This data remains on your device and is cleared when you uninstall the extension.
 
 ## 4. Data Sharing and Third Parties
 
@@ -226,7 +238,7 @@ You have the right to:
 
 - **Access:** View the data we hold about you (by looking at your Dashboard or Friends list).
 - **Rectify:** Update your profile information via your Google Account settings.
-- **Delete:** You can request the deletion of your account and all associated data by contacting us or using usage deletion features if available in the dashboard. Unfriending a user triggers a cascade deletion of shared history between those two users.
+- **Delete:** You can request the deletion of your account and all associated data by contacting us or using usage deletion features if available in the dashboard. Unfriending a user triggers a cascade delete for all associated video shares.
 
 ## 6. Detailed Scope of Permissions
 
@@ -298,11 +310,11 @@ To prevent authenticated abuse (e.g., a legitimate user spamming friend requests
 
 ### [FAQ] Why Rate Limiting and not App Check?
 
-While App Check with **reCAPTCHA v3** is theoretically stronger because it measures user interaction (mouse movements, clicks) to detect bots, it requires loading external scripts (`google.com/recaptcha/...`), which is restricted in Manifest V3 extensions.
+While App Check with **reCAPTCHA v3** is theoretically stronger because it measures user interaction (mouse movements, clicks) to detect bots, it requires loading external scripts (`google.com/recaptcha/api.js`). This creates a **Manifest V3 compliance conflict** with Chrome Web Store's "No Remote Code" policy. Rate limiting is a practical compromise that doesn't block the extension's approval while still protecting the backend.
 
 # File Structure
 
-As of 12/6/2025, for feat/sharing-refine
+As of 1/19/2026
 
 ```
 SHAREYT
@@ -314,11 +326,16 @@ SHAREYT
 | | |----index.ts > Background context code (Central Data Hub). Handles Auth, Listeners, Notifications.
 | | |----offscreenInteraction.ts > [Legacy]
 | |
+| |----changelog > The html for the changelog page
+| | |----index.html
+| |----changelog-script.js
+| |
 | |----content > Contains the contentscript that is injected when YouTube is detected
-| | |----index.ts > Uses storage.watch() for reactive dropdown.
+| | |----index.ts > Injects Friends Feed on homepage and Share button on video player.
 | |
 | |----dashboard > The html for the extension's dashboard page
 | | |----index.html
+| |----dashboard-script.js > Code for the extension's dashboard page
 | |
 | |----offscreen > Folder for files in offscreen context
 | | |----index.html
@@ -332,7 +349,11 @@ SHAREYT
 | | |----LoginForm.tsx
 | | |----main.tsx
 | | |----style.css
-| |----dashboard-script.js > Code for the extension's dashboard page (Refactored to use storage)
+| |
+| |----settings > The html for the settings page
+| | |----index.html
+| |----settings-script.js
+| |
 |
 |----functions > Contains all custom cloud functions for Firebase, used for safe writes to Firestore
 | |
@@ -342,10 +363,12 @@ SHAREYT
 |
 |----public
 | |
-| |----assets---|...(expandable folder, but irrelevant)
-| |----icon-----|...(expandable folder, but irrelevant)
+| |----assets
+| |----icon
+| | |----128.png
+| | |----raw logo.png
 | |
-| |----icon.png > Future icon for ShareYT
+| |----changelog.txt
 | |----index.html > Standard Firebase Hosting startup page
 | |----signInWithPopup.html > html page for signInWithPopup
 | |----signInWithPopup.js > js file for signInWithPopup
@@ -362,23 +385,3 @@ SHAREYT
 | |----listeners.ts > Reusable Firestore listener definitions (used by background script).
 | |----notifications.ts > Browser notification utility (Cross-browser support).
 ```
-
-## Auth and billing notes
-
-- Firebase Authentication vs Identity Platform
-  - Plain Firebase Authentication (default) does not charge per monthly active user (MAU) for common providers (email/password, Google, etc.). Phone Auth is billed per verification.
-  - Authentication with Identity Platform (the Google Cloud upgrade) is billed by MAU: each distinct account that successfully signs in at least once in a month counts as 1 MAU (free tier applies, then charges).
-  - How to check which you’re on: Firebase Console → Authentication → Settings. If Identity Platform is enabled (also visible in Google Cloud Console → Identity Platform), MAU pricing applies.
-
-- Does `admin.auth().getUser(uid)` cost a Firestore read?
-  - No. It calls the Firebase Authentication Admin API, not Firestore. There are no Firestore read charges from this call. Normal Cloud Functions billing still applies.
-  - If you need many users at once, prefer `admin.auth().getUsers([...])` (batch up to 100) to reduce round trips, or maintain a minimal “profiles” document in Firestore for bulk reads.
-
-- What does `listUsers()` do?
-  - `admin.auth().listUsers(maxResults?, pageToken?)` iterates Auth users (not Firestore) and returns user records (uid, email, displayName, providers, customClaims, metadata, etc.).
-  - It’s paginated (up to 1000 per page). There’s no server-side filtering/sorting—iterate and filter client-side.
-  - Costs/rate limits are Auth API related, not Firestore reads, and it doesn’t create MAUs by itself.
-  - Common use cases: exports/migrations, audits, backfills (e.g., creating Firestore profile docs from Auth), cleaning up disabled users.
-
-- Enforcing callable auth
-  - Callable functions like `getUserProfile` can enforce signed-in callers with `if (!context.auth) throw new HttpsError('unauthenticated', ...)`. The Admin SDK inside the function is still privileged regardless of Firestore Security Rules.

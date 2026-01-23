@@ -1,3 +1,8 @@
+[1/21/2026, v0.0.7]
+- Added the ShareYT Friends Feed to the YouTube.com homepage.
+- Version 0.0.6 was minor bug fixes.
+
+
 [1/2/2026, v0.0.5]
 - Added this changelog page.
 - Added changelog.txt for easier updates.

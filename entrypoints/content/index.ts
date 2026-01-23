@@ -7,6 +7,735 @@ function getChannelName() {
   return channelEl?.textContent?.trim() || 'Unknown Channel';
 }
 
+// ==========================================
+// SHAREYT FRIENDS FEED ON YOUTUBE HOMEPAGE
+// ==========================================
+
+const FEED_CONTAINER_ID = 'shareyt-friends-feed';
+
+function injectFriendsFeedStyles() {
+  if (document.getElementById('shareyt-feed-styles')) return;
+
+  const styles = document.createElement('style');
+  styles.id = 'shareyt-feed-styles';
+  styles.textContent = `
+    #${FEED_CONTAINER_ID} {
+      margin: 16px 0 24px 0;
+      padding: 16px 24px;
+      background: var(--yt-spec-brand-background-primary, #0f0f0f);
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .shareyt-feed-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .shareyt-logo {
+      width: 28px;
+      height: 28px;
+      border-radius: 4px;
+    }
+
+    .shareyt-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #ef3939;
+      font-family: 'Roboto', 'Arial', sans-serif;
+    }
+
+    .shareyt-dashboard-btn {
+      margin-left: auto;
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #aaa;
+      padding: 6px 14px;
+      border-radius: 18px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .shareyt-dashboard-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+
+    .shareyt-feed-scroll {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,0.3) transparent;
+    }
+
+    .shareyt-feed-scroll::-webkit-scrollbar {
+      height: 6px;
+    }
+
+    .shareyt-feed-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .shareyt-feed-scroll::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,0.3);
+      border-radius: 3px;
+    }
+
+    .shareyt-video-card {
+      flex: 0 0 auto;
+      width: 200px;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      border-radius: 8px;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.05);
+      position: relative;
+    }
+
+    .shareyt-video-card:hover {
+      transform: scale(1.03);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+
+    .shareyt-delete-btn {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      background: rgba(0, 0, 0, 0.6);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: bold;
+      opacity: 0;
+      transition: opacity 0.2s, background 0.2s;
+      z-index: 10;
+      line-height: 1;
+    }
+
+    .shareyt-video-card:hover .shareyt-delete-btn {
+      opacity: 1;
+    }
+
+    .shareyt-delete-btn:hover {
+      background: #f44336;
+    }
+
+    .shareyt-request-alert {
+      background: #ef3939;
+      color: white;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 12px;
+      margin-left: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .shareyt-request-alert:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+      filter: brightness(1.1);
+    }
+
+    .shareyt-reaction-container {
+      margin-top: 6px;
+    }
+
+    .shareyt-reaction-toggle {
+      background: none;
+      border: none;
+      color: #aaa;
+      cursor: pointer;
+      padding: 0;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: color 0.2s;
+    }
+
+    .shareyt-reaction-toggle:hover {
+      color: #ef3939;
+    }
+
+    .shareyt-reaction-content {
+      display: none;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 8px;
+      border-radius: 6px;
+      margin-top: 6px;
+      font-size: 12px;
+      color: #e0e0e0;
+      border-left: 3px solid #ef3939;
+      line-height: 1.4;
+      white-space: pre-wrap;
+    }
+
+    .shareyt-reaction-content.open {
+      display: block;
+      animation: fadeIn 0.2s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .shareyt-thumbnail {
+      width: 100%;
+      height: 112px;
+      object-fit: cover;
+      display: block;
+    }
+
+    .shareyt-card-info {
+      padding: 8px 10px;
+    }
+
+    .shareyt-video-title {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: #f1f1f1;
+      line-height: 1.3;
+      max-height: 2.6em;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+
+    .shareyt-shared-by {
+      display: block;
+      font-size: 11px;
+      color: #aaa;
+      margin-top: 4px;
+    }
+
+    .shareyt-empty-state {
+      color: #888;
+      font-size: 14px;
+      padding: 20px 0;
+      text-align: center;
+    }
+
+    .shareyt-dashboard-link {
+      color: #ef3939;
+      text-decoration: none;
+      cursor: pointer;
+      margin-left: 8px;
+    }
+
+    .shareyt-dashboard-link:hover {
+      text-decoration: underline;
+    }
+
+    .shareyt-signin-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px 0;
+      width: 100%;
+      text-align: center;
+    }
+
+    .shareyt-signin-text {
+      color: #f1f1f1;
+      font-size: 14px;
+      margin-bottom: 12px;
+    }
+
+    .shareyt-signin-btn {
+      background-color: #ef3939;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 18px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .shareyt-signin-btn:hover {
+      background-color: #c92c2c;
+    }
+  `;
+  document.head.appendChild(styles);
+}
+
+function createFriendsFeedSection(): HTMLElement {
+  const container = document.createElement('div');
+  container.id = FEED_CONTAINER_ID;
+
+  const header = document.createElement('div');
+  header.className = 'shareyt-feed-header';
+
+  const logo = document.createElement('img');
+  logo.className = 'shareyt-logo';
+  logo.src = chrome.runtime.getURL('/icon/128.png');
+  logo.alt = 'ShareYT';
+
+  const title = document.createElement('span');
+  title.className = 'shareyt-title';
+  title.textContent = 'ShareYT Friends Feed';
+
+  const dashboardBtn = document.createElement('button');
+  dashboardBtn.className = 'shareyt-dashboard-btn';
+  dashboardBtn.textContent = 'View Dashboard';
+  dashboardBtn.title = 'Open ShareYT Dashboard';
+  dashboardBtn.onclick = () => {
+    const dashboardUrl = chrome.runtime.getURL('/dashboard.html');
+    window.open(dashboardUrl, '_blank');
+  };
+
+  header.appendChild(logo);
+  header.appendChild(title);
+
+  // Pending Requests Alert (Logic handled in update)
+  const alertContainer = document.createElement('div');
+  alertContainer.id = 'shareyt-request-alert-container';
+  header.appendChild(alertContainer);
+
+  header.appendChild(dashboardBtn);
+
+  const scrollContainer = document.createElement('div');
+  scrollContainer.className = 'shareyt-feed-scroll';
+
+  container.appendChild(header);
+  container.appendChild(scrollContainer);
+
+  return container;
+}
+
+function renderFeedVideoCard(video: any, friendName: string): HTMLElement {
+  const card = document.createElement('div');
+  card.className = 'shareyt-video-card';
+
+  const thumbnail = document.createElement('img');
+  thumbnail.className = 'shareyt-thumbnail';
+  thumbnail.src =
+    video.thumbnailUrl || 'https://i.ytimg.com/vi/default/hqdefault.jpg';
+  thumbnail.alt = video.title || 'Video';
+
+  const deleteBtn = document.createElement('button');
+  deleteBtn.className = 'shareyt-delete-btn';
+  deleteBtn.innerHTML = '&times;';
+  deleteBtn.title = 'Remove';
+  deleteBtn.onclick = async (e) => {
+    e.stopPropagation();
+    if (confirm('Remove this video from your feed?')) {
+      try {
+        card.style.opacity = '0.5';
+        // Use existing video:delete handler in background which takes { suggestionId } as data
+        await messaging.sendMessage('video:delete', { suggestionId: video.id });
+        card.remove();
+
+        // If no more cards, refreshing might be needed to show "empty state" but removing is good enough for now
+      } catch (err) {
+        console.error('Failed to delete video:', err);
+        card.style.opacity = '1';
+        alert('Failed to delete video. Please try again.');
+      }
+    }
+  };
+
+  const info = document.createElement('div');
+  info.className = 'shareyt-card-info';
+
+  const titleEl = document.createElement('span');
+  titleEl.className = 'shareyt-video-title';
+  titleEl.textContent = video.title || 'Untitled Video';
+  titleEl.title = video.title || 'Untitled Video';
+
+  const sharedBy = document.createElement('span');
+  sharedBy.className = 'shareyt-shared-by';
+
+  // Format Date
+  let dateLabel = '';
+  if (video.timestamp) {
+    try {
+      const date = video.timestamp.seconds
+        ? new Date(video.timestamp.seconds * 1000)
+        : new Date(video.timestamp);
+
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffHrs = diffMs / (1000 * 60 * 60);
+
+      // If less than 24 hours, show relative or time
+      if (diffHrs < 24) {
+        dateLabel = date.toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+      } else {
+        dateLabel = date.toLocaleDateString([], {
+          month: 'short',
+          day: 'numeric',
+        });
+      }
+    } catch (e) {
+      console.error('Error formatting date:', e);
+    }
+  }
+
+  sharedBy.textContent = `Shared by ${friendName}${dateLabel ? ' • ' + dateLabel : ''}`;
+
+  info.appendChild(titleEl);
+  info.appendChild(sharedBy);
+
+  if (video.reaction) {
+    const reactionContainer = document.createElement('div');
+    reactionContainer.className = 'shareyt-reaction-container';
+
+    const toggle = document.createElement('button');
+    toggle.className = 'shareyt-reaction-toggle';
+    toggle.innerHTML = '💬 View Message';
+    toggle.title = 'Show reaction';
+
+    const content = document.createElement('div');
+    content.className = 'shareyt-reaction-content';
+    content.textContent = video.reaction;
+
+    toggle.onclick = (e) => {
+      e.stopPropagation(); // Prevent opening video
+      const isOpen = content.classList.contains('open');
+      if (isOpen) {
+        content.classList.remove('open');
+        toggle.innerHTML = '💬 View Message';
+      } else {
+        content.classList.add('open');
+        toggle.innerHTML = '💬 Hide Message';
+      }
+    };
+
+    reactionContainer.appendChild(toggle);
+    reactionContainer.appendChild(content);
+    info.appendChild(reactionContainer);
+  }
+
+  card.appendChild(thumbnail);
+  card.appendChild(deleteBtn);
+  card.appendChild(info);
+
+  card.onclick = () => {
+    window.location.href = `https://www.youtube.com/watch?v=${video.videoId}`;
+  };
+
+  return card;
+}
+
+function renderEmptyState(): HTMLElement {
+  const empty = document.createElement('div');
+  empty.className = 'shareyt-empty-state';
+  empty.innerHTML = `No videos shared with you yet. <a class="shareyt-dashboard-link" id="shareyt-open-dashboard">Open Dashboard</a>`;
+
+  setTimeout(() => {
+    const link = empty.querySelector('#shareyt-open-dashboard');
+    if (link) {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const dashboardUrl = chrome.runtime.getURL('/dashboard.html');
+        window.open(dashboardUrl, '_blank');
+      });
+    }
+  }, 0);
+
+  return empty;
+}
+
+function renderSignInState(): HTMLElement {
+  const container = document.createElement('div');
+  container.className = 'shareyt-signin-container';
+
+  const text = document.createElement('div');
+  text.className = 'shareyt-signin-text';
+  text.textContent =
+    "Sign in to see videos shared by your friends (if you're already logged in, try refreshing the page)";
+
+  const btn = document.createElement('button');
+  btn.className = 'shareyt-signin-btn';
+  btn.textContent = 'Sign In to ShareYT';
+
+  btn.onclick = async () => {
+    try {
+      await messaging.sendMessage('auth:signIn');
+    } catch (e) {
+      console.error('Failed to send login message:', e);
+      // Fallback: alert the user or try opening dashboard
+      const dashboardUrl = chrome.runtime.getURL('/dashboard.html');
+      window.open(dashboardUrl, '_blank');
+    }
+  };
+
+  container.appendChild(text);
+  container.appendChild(btn);
+
+  return container;
+}
+
+// Track the observer for cleanup
+let feedObserver: MutationObserver | null = null;
+let feedCheckInterval: ReturnType<typeof setInterval> | null = null;
+
+async function injectFriendsFeed() {
+  // Only inject on YouTube homepage
+  const currentUrl = window.location.href;
+  const isHomepage =
+    currentUrl === 'https://www.youtube.com/' ||
+    currentUrl === 'https://www.youtube.com' ||
+    currentUrl.match(/^https:\/\/www\.youtube\.com\/\?.*$/);
+
+  if (!isHomepage) {
+    // Remove feed and stop observer if navigating away from homepage
+    stopFeedObserver();
+    const existingFeed = document.getElementById(FEED_CONTAINER_ID);
+    if (existingFeed) {
+      existingFeed.remove();
+    }
+    return;
+  }
+
+  // Check if already injected
+  if (document.getElementById(FEED_CONTAINER_ID)) {
+    return;
+  }
+
+  // Inject styles
+  injectFriendsFeedStyles();
+
+  // Find insertion point - we'll insert before the main grid, not inside it
+  // This makes it more resilient to YouTube rebuilding its content
+  const richGridRenderer = document.querySelector('ytd-rich-grid-renderer');
+  if (!richGridRenderer) {
+    // Retry after a delay - YouTube might still be loading
+    setTimeout(injectFriendsFeed, 500);
+    return;
+  }
+
+  // Create the feed section
+  const feedSection = createFriendsFeedSection();
+
+  // Insert BEFORE the rich-grid-renderer, making it a sibling rather than a child
+  // This way it won't be destroyed when YouTube rebuilds the grid
+  const parent = richGridRenderer.parentNode;
+  if (parent) {
+    parent.insertBefore(feedSection, richGridRenderer);
+  } else {
+    // Fallback: insert inside #contents but we'll need the observer
+    const primaryContent = richGridRenderer.querySelector('#contents');
+    if (primaryContent) {
+      const firstRow = primaryContent.querySelector(
+        'ytd-rich-grid-row, ytd-rich-item-renderer',
+      );
+      if (firstRow) {
+        firstRow.parentNode?.insertBefore(feedSection, firstRow.nextSibling);
+      } else {
+        primaryContent.prepend(feedSection);
+      }
+    }
+  }
+
+  // Load and render videos
+  await updateFriendsFeedContent();
+
+  // Start watching for feed removal
+  startFeedObserver();
+}
+
+function startFeedObserver() {
+  // Clean up any existing observer
+  stopFeedObserver();
+
+  // Use a periodic check as the primary mechanism
+  // This is more reliable than MutationObserver for this case
+  feedCheckInterval = setInterval(() => {
+    const currentUrl = window.location.href;
+    const isHomepage =
+      currentUrl === 'https://www.youtube.com/' ||
+      currentUrl === 'https://www.youtube.com' ||
+      currentUrl.match(/^https:\/\/www\.youtube\.com\/\?.*$/);
+
+    if (isHomepage) {
+      const feed = document.getElementById(FEED_CONTAINER_ID);
+      // Check if it's missing OR if it's not connected to the DOM anymore
+      if (!feed || !feed.isConnected) {
+        console.log('[ShareYT] Feed missing or disconnected, re-injecting...');
+        injectFriendsFeed();
+      }
+    } else {
+      // If not homepage, ensure it's gone (failsafe)
+      if (document.getElementById(FEED_CONTAINER_ID)) {
+        removeFriendsFeed();
+      }
+    }
+  }, 500); // Check every 0.5s for faster recovery
+
+  // Also use MutationObserver as a backup for faster detection
+  const targetNode = document.body;
+  feedObserver = new MutationObserver((mutations) => {
+    // Only check if we're on homepage
+    const currentUrl = window.location.href;
+    const isHomepage =
+      currentUrl === 'https://www.youtube.com/' ||
+      currentUrl === 'https://www.youtube.com' ||
+      currentUrl.match(/^https:\/\/www\.youtube\.com\/\?.*$/);
+
+    if (!isHomepage) return;
+
+    // Check if our feed was removed
+    for (const mutation of mutations) {
+      for (const removedNode of mutation.removedNodes) {
+        if (removedNode instanceof HTMLElement) {
+          // Check if the removed node is our feed or contains our feed
+          if (
+            removedNode.id === FEED_CONTAINER_ID ||
+            removedNode.querySelector?.(`#${FEED_CONTAINER_ID}`)
+          ) {
+            console.log(
+              '[ShareYT] Feed removal detected via MutationObserver, re-injecting...',
+            );
+            // Debounce the re-injection
+            setTimeout(() => {
+              if (!document.getElementById(FEED_CONTAINER_ID)) {
+                injectFriendsFeed();
+              }
+            }, 100);
+            return;
+          }
+        }
+      }
+    }
+  });
+
+  feedObserver.observe(targetNode, {
+    childList: true,
+    subtree: true,
+  });
+}
+
+function stopFeedObserver() {
+  if (feedObserver) {
+    feedObserver.disconnect();
+    feedObserver = null;
+  }
+  if (feedCheckInterval) {
+    clearInterval(feedCheckInterval);
+    feedCheckInterval = null;
+  }
+}
+
+async function updateFriendsFeedContent() {
+  const feedSection = document.getElementById(FEED_CONTAINER_ID);
+  if (!feedSection) return;
+
+  const scrollContainer = feedSection.querySelector('.shareyt-feed-scroll');
+  if (!scrollContainer) return;
+
+  // Get user status and data
+  const [user, videos, friendsList, friendRequests] = await Promise.all([
+    storage.getItem<SerializedUser>('local:user'),
+    storage.getItem<any[]>('local:suggestedVideos'),
+    storage.getItem<any[]>('local:friendsList'),
+    storage.getItem<Record<string, any>>('local:friendRequests'), // Fetch requests
+  ]);
+
+  // Update Friend Request Alert
+  const alertContainer = document.getElementById(
+    'shareyt-request-alert-container',
+  );
+  if (alertContainer) {
+    alertContainer.innerHTML = ''; // Clear previous
+    if (friendRequests && Object.keys(friendRequests).length > 0) {
+      const count = Object.keys(friendRequests).length;
+      const alert = document.createElement('div');
+      alert.className = 'shareyt-request-alert';
+      alert.textContent = `${count} pending friend request${count > 1 ? 's' : ''}`;
+      alert.title = 'Click to view requests in dashboard';
+      alert.onclick = () => {
+        const dashboardUrl = chrome.runtime.getURL('/dashboard.html#friends'); // Anchor might not work if JS handles routing, but harmless
+        window.open(dashboardUrl, '_blank');
+      };
+      // Insert before dashboard button if possible, or just append
+      alertContainer.appendChild(alert);
+    }
+  }
+
+  // Populate videos
+  scrollContainer.innerHTML = '';
+
+  // Check if logged in
+  if (!user || !user.uid) {
+    scrollContainer.appendChild(renderSignInState());
+    return;
+  }
+
+  if (!videos || videos.length === 0) {
+    scrollContainer.appendChild(renderEmptyState());
+    return;
+  }
+
+  // Create a map for friend name lookup
+  const friendMap = new Map<string, string>();
+  if (friendsList && Array.isArray(friendsList)) {
+    friendsList.forEach((friend: any) => {
+      friendMap.set(
+        friend.id,
+        friend.label || friend.displayName || friend.email || 'A friend',
+      );
+    });
+  }
+
+  // Sort by timestamp (newest first) and take first 10
+  const sortedVideos = [...videos]
+    .sort((a, b) => {
+      const tA = a.timestamp?.seconds || 0;
+      const tB = b.timestamp?.seconds || 0;
+      return tB - tA;
+    })
+    .slice(0, 10);
+
+  // Render video cards
+  sortedVideos.forEach((video: any) => {
+    const friendName = friendMap.get(video.from) || 'A friend';
+    const card = renderFeedVideoCard(video, friendName);
+    scrollContainer.appendChild(card);
+  });
+}
+
+function removeFriendsFeed() {
+  stopFeedObserver();
+  const feed = document.getElementById(FEED_CONTAINER_ID);
+  if (feed) {
+    feed.remove();
+  }
+}
+
 export default defineContentScript({
   matches: ['*://*.youtube.com/*'], // TODO handle YT shorts format later
   runAt: 'document_idle',
@@ -730,6 +1459,9 @@ export default defineContentScript({
       console.log('removeButtonStatus1:', removeButtonStatus1);
       console.log('removeButtonStatus2:', removeButtonStatus2);
 
+      // Clean up Friends Feed - REMOVED from here to handle SPA navigation better
+      // removeFriendsFeed(); -> moved to logout handler and managed by injectFriendsFeed logic
+
       // Clean up observers and intervals
       if (controlsObserver) {
         controlsObserver.disconnect();
@@ -770,6 +1502,9 @@ export default defineContentScript({
         waitForControls();
         startLoggingTimeOnceReady();
       }
+
+      // Always try to inject Friends Feed on homepage (it handles login check internally)
+      injectFriendsFeed();
     }
 
     storage.watch<SerializedUser>(
@@ -782,6 +1517,8 @@ export default defineContentScript({
           isLoggedIn = false;
           console.log('isLoggedin status after logout:', isLoggedIn);
           cleanUpState();
+          // Don't remove feed, just update it to show sign in state
+          updateFriendsFeedContent();
 
           console.log(
             'All observers and intervals were cleared due to user logout',
@@ -793,9 +1530,22 @@ export default defineContentScript({
           console.log('isLoggedin status after login:', isLoggedIn);
           waitForControls();
           startLoggingTimeOnceReady();
+          // Inject Friends Feed on homepage
+          injectFriendsFeed();
         }
       },
     );
+
+    // Watch for new shared videos to update Friends Feed in real-time
+    storage.watch('local:suggestedVideos', () => {
+      // Update feed regardless of login state (if logged out, updateFriendsFeedContent handles it)
+      updateFriendsFeedContent();
+    });
+
+    // Watch for friend requests to update Friends Feed alert
+    storage.watch('local:friendRequests', () => {
+      updateFriendsFeedContent();
+    });
 
     let lastUrl = window.location.href;
     let navigationTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -813,12 +1563,19 @@ export default defineContentScript({
         // Debounce re-inits in case multiple changes happen quickly
         if (navigationTimeout) clearTimeout(navigationTimeout);
         navigationTimeout = setTimeout(() => {
-          // Clean up old state
-          cleanUpState();
+          // Clean up old state (but not Friends Feed - it handles itself)
+          const removeButtonStatus1 = removeButton('#log-title-button');
+          const removeButtonStatus2 = removeButton('#share-dropdown-button');
+          console.log('removeButtonStatus1:', removeButtonStatus1);
+          console.log('removeButtonStatus2:', removeButtonStatus2);
 
           console.log('Re-initializing after navigation...');
+
+          // Always try to inject/update Friends Feed (it handles homepage detection internally)
+          injectFriendsFeed();
+
           if (currentUrl != 'https://www.youtube.com/') {
-            // TODO this needs to be more robust later
+            // On video pages, wait for controls
             waitForControls();
             startLoggingTimeOnceReady();
           }
