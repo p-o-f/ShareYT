@@ -332,16 +332,14 @@ function createFriendsFeedSection(): HTMLElement {
   return container;
 }
 
-function renderFeedVideoCard(
-  video: any,
-  friendName: string
-): HTMLElement {
+function renderFeedVideoCard(video: any, friendName: string): HTMLElement {
   const card = document.createElement('div');
   card.className = 'shareyt-video-card';
 
   const thumbnail = document.createElement('img');
   thumbnail.className = 'shareyt-thumbnail';
-  thumbnail.src = video.thumbnailUrl || 'https://i.ytimg.com/vi/default/hqdefault.jpg';
+  thumbnail.src =
+    video.thumbnailUrl || 'https://i.ytimg.com/vi/default/hqdefault.jpg';
   thumbnail.alt = video.title || 'Video';
 
   const deleteBtn = document.createElement('button');
@@ -391,9 +389,15 @@ function renderFeedVideoCard(
 
       // If less than 24 hours, show relative or time
       if (diffHrs < 24) {
-        dateLabel = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        dateLabel = date.toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        });
       } else {
-        dateLabel = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+        dateLabel = date.toLocaleDateString([], {
+          month: 'short',
+          day: 'numeric',
+        });
       }
     } catch (e) {
       console.error('Error formatting date:', e);
@@ -471,7 +475,8 @@ function renderSignInState(): HTMLElement {
 
   const text = document.createElement('div');
   text.className = 'shareyt-signin-text';
-  text.textContent = 'Sign in to see videos shared by your friends (if you\'re already logged in, try refreshing the page)';
+  text.textContent =
+    "Sign in to see videos shared by your friends (if you're already logged in, try refreshing the page)";
 
   const btn = document.createElement('button');
   btn.className = 'shareyt-signin-btn';
@@ -501,7 +506,8 @@ let feedCheckInterval: ReturnType<typeof setInterval> | null = null;
 async function injectFriendsFeed() {
   // Only inject on YouTube homepage
   const currentUrl = window.location.href;
-  const isHomepage = currentUrl === 'https://www.youtube.com/' ||
+  const isHomepage =
+    currentUrl === 'https://www.youtube.com/' ||
     currentUrl === 'https://www.youtube.com' ||
     currentUrl.match(/^https:\/\/www\.youtube\.com\/\?.*$/);
 
@@ -544,7 +550,9 @@ async function injectFriendsFeed() {
     // Fallback: insert inside #contents but we'll need the observer
     const primaryContent = richGridRenderer.querySelector('#contents');
     if (primaryContent) {
-      const firstRow = primaryContent.querySelector('ytd-rich-grid-row, ytd-rich-item-renderer');
+      const firstRow = primaryContent.querySelector(
+        'ytd-rich-grid-row, ytd-rich-item-renderer',
+      );
       if (firstRow) {
         firstRow.parentNode?.insertBefore(feedSection, firstRow.nextSibling);
       } else {
@@ -568,7 +576,8 @@ function startFeedObserver() {
   // This is more reliable than MutationObserver for this case
   feedCheckInterval = setInterval(() => {
     const currentUrl = window.location.href;
-    const isHomepage = currentUrl === 'https://www.youtube.com/' ||
+    const isHomepage =
+      currentUrl === 'https://www.youtube.com/' ||
       currentUrl === 'https://www.youtube.com' ||
       currentUrl.match(/^https:\/\/www\.youtube\.com\/\?.*$/);
 
@@ -592,7 +601,8 @@ function startFeedObserver() {
   feedObserver = new MutationObserver((mutations) => {
     // Only check if we're on homepage
     const currentUrl = window.location.href;
-    const isHomepage = currentUrl === 'https://www.youtube.com/' ||
+    const isHomepage =
+      currentUrl === 'https://www.youtube.com/' ||
       currentUrl === 'https://www.youtube.com' ||
       currentUrl.match(/^https:\/\/www\.youtube\.com\/\?.*$/);
 
@@ -603,9 +613,13 @@ function startFeedObserver() {
       for (const removedNode of mutation.removedNodes) {
         if (removedNode instanceof HTMLElement) {
           // Check if the removed node is our feed or contains our feed
-          if (removedNode.id === FEED_CONTAINER_ID ||
-            removedNode.querySelector?.(`#${FEED_CONTAINER_ID}`)) {
-            console.log('[ShareYT] Feed removal detected via MutationObserver, re-injecting...');
+          if (
+            removedNode.id === FEED_CONTAINER_ID ||
+            removedNode.querySelector?.(`#${FEED_CONTAINER_ID}`)
+          ) {
+            console.log(
+              '[ShareYT] Feed removal detected via MutationObserver, re-injecting...',
+            );
             // Debounce the re-injection
             setTimeout(() => {
               if (!document.getElementById(FEED_CONTAINER_ID)) {
@@ -621,7 +635,7 @@ function startFeedObserver() {
 
   feedObserver.observe(targetNode, {
     childList: true,
-    subtree: true
+    subtree: true,
   });
 }
 
@@ -643,8 +657,6 @@ async function updateFriendsFeedContent() {
   const scrollContainer = feedSection.querySelector('.shareyt-feed-scroll');
   if (!scrollContainer) return;
 
-
-
   // Get user status and data
   const [user, videos, friendsList, friendRequests] = await Promise.all([
     storage.getItem<SerializedUser>('local:user'),
@@ -654,7 +666,9 @@ async function updateFriendsFeedContent() {
   ]);
 
   // Update Friend Request Alert
-  const alertContainer = document.getElementById('shareyt-request-alert-container');
+  const alertContainer = document.getElementById(
+    'shareyt-request-alert-container',
+  );
   if (alertContainer) {
     alertContainer.innerHTML = ''; // Clear previous
     if (friendRequests && Object.keys(friendRequests).length > 0) {
@@ -690,16 +704,21 @@ async function updateFriendsFeedContent() {
   const friendMap = new Map<string, string>();
   if (friendsList && Array.isArray(friendsList)) {
     friendsList.forEach((friend: any) => {
-      friendMap.set(friend.id, friend.label || friend.displayName || friend.email || 'A friend');
+      friendMap.set(
+        friend.id,
+        friend.label || friend.displayName || friend.email || 'A friend',
+      );
     });
   }
 
   // Sort by timestamp (newest first) and take first 10
-  const sortedVideos = [...videos].sort((a, b) => {
-    const tA = a.timestamp?.seconds || 0;
-    const tB = b.timestamp?.seconds || 0;
-    return tB - tA;
-  }).slice(0, 10);
+  const sortedVideos = [...videos]
+    .sort((a, b) => {
+      const tA = a.timestamp?.seconds || 0;
+      const tB = b.timestamp?.seconds || 0;
+      return tB - tA;
+    })
+    .slice(0, 10);
 
   // Render video cards
   sortedVideos.forEach((video: any) => {
